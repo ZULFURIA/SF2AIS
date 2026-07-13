@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  sf2ais:
+    build: .
+    container_name: sf2ais
+    ports:
+      - "8000:8000"
+    environment:
+      - CONFIG_PATH=/app/data/config.json
+    volumes:
+      # Persists your admin login, network settings, and share credentials
+      - ./data:/app/data
+      # Mount any folders you plan to share during the wizard so they're
+      # visible inside the container. Add one line per folder, e.g.:
+      - ./shared_files:/app/shared_files
+      # - /path/on/host/Documents:/app/Documents
+    restart: unless-stopped
