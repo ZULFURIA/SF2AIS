@@ -1,4 +1,4 @@
-# Sf2AiS — Secure Files to AI Server 🤖📂
+# Sf2AiS (aka: AI-Gateway-FTP) — Secure Files to AI Server 🤖📂
 
 A password-protected, self-hosted bridge that lets web-browsing AI chatbots
 (ChatGPT, Claude, Gemini, Copilot, etc.) securely browse, read, and download
@@ -57,8 +57,7 @@ Then open `http://localhost:8000` (or your server's address) in a browser.
 
 ## The IP probe
 
-Because compiling signed installers for Windows/macOS/Linux isn't something
-that can be done in a chat build, the probe ships as a small cross-platform
+Installers for Windows/macOS/Linux IP update probe ships as a small cross-platform
 **Python script** instead — it works identically on all three, you just point
 it at your gateway and schedule it:
 
@@ -78,8 +77,26 @@ Full instructions are generated for you on the dashboard once you choose the
   Tunnel) rather than exposing plain HTTP directly, especially for the static
   IP / current-IP options.
 - Anyone with a share's username/password can read every file in that share's
-  folder — only add folders you're comfortable an external AI service reading.
+  folder — only add folders you're comfortable to an external AI service reading.
 - Path traversal protection is included, but this project hasn't had a
   professional security audit — use it at your own risk on a home server.
 - To reset your dashboard login or start over, stop the server and delete
   `data/config.json`, then restart.
+
+#Licence: 🤖📂
+
+[![License: Sf2AiS v1.0](https://shields.io)](LICENSE.md)
+[![GitHub Sponsor](https://shields.io)](https://github.com)
+
+An open-source-style, source-available secure file gateway...
+
+...
+
+## ⚖️ License
+
+This project is licensed under the **Sf2AiS Noncommercial License v1.0**. 
+
+* **Hobbyists, Students, and Home Labs:** 100% Free to use, modify, and distribute for personal or educational purposes.
+* **Commercial Entities / Monetization:** Any commercial use, SaaS bundling, or monetization requires written permission from the copyright holder (Wayne).
+
+See the full terms in [LICENSE.md](LICENSE.md). For commercial licensing inquiries, please open an issue or contact the maintainer directly.
