@@ -7,6 +7,7 @@
 import os
 import re
 import json
+import html
 import uuid
 import secrets
 import string
@@ -788,45 +789,62 @@ def probe_setup_guide():
     return page("Probe Setup", body)
 
 # ---------------------------------------------------------------------------
-# File serving (per-share)
+# Secure File serving (per-share) - Patched v1.0
 # ---------------------------------------------------------------------------
-
 @app.get("/files", response_class=HTMLResponse)
 def list_files(share: dict = Depends(share_auth)):
-    folder = share["folder"]
+    # Safely cast and isolate root directory tracking elements using pathlib
+    folder_path = Path(share["folder"]).resolve()
+    
     try:
-        files = sorted(os.listdir(folder))
+        # Enforce strict path iteration rather than raw os.listdir sequences
+        files = sorted([f for f in folder_path.iterdir() if f.is_file()])
     except Exception as e:
-        return "<html><body><h3>Error reading folder: %s</h3></body></html>" % str(e)
-
+        # Escape exception details to prevent error-based XSS injection vulnerabilities
+        safe_error = html.escape(str(e))
+        return HTMLResponse(content=f"<html><body><h3>Error reading directory: {safe_error}</h3></body></html>", status_code=500)
+    
     links = ""
-    for f in files:
-        if f.startswith('.'):
+    for file in files:
+        # Prevent listing hidden system configuration files
+        if file.name.startswith('.'):
             continue
-        full = os.path.join(folder, f)
-        if os.path.isfile(full):
-            links += '<li><a href="/files/download/%s">%s</a></li>\n' % (f, f)
+            
+        # Escape parameters before injection into the HTML template string
+        safe_name = html.escape(file.name)
+        links += f'<li><a href="/files/download/{safe_name}">{safe_name}</a></li>\n'
+        
     if not links:
-        links = "<li><em>No files available.</em></li>"
-
-    body = brand_header() + ("""
-        <h2>Authenticated Session</h2>
-        <p class="sub">Signed in as <strong>%s</strong></p>
-        <ul>%s</ul>
-    """ % (share['username'], links))
+        links = "<li><em>No assets available in this directory stream.</em></li>"
+        
+    safe_user = html.escape(share['username'])
+    body = brand_header() + f"""
+    <h2>Secure AI Extraction Terminal</h2>
+    <p class="sub">Authenticated Profile: <strong>{safe_user}</strong></p>
+    <ul style="line-height: 1.8;">{links}</ul>
+    """
     return page("File Index", body)
 
 @app.get("/files/download/{filename}")
 def download_file(filename: str, share: dict = Depends(share_auth)):
-    folder = share["folder"]
-    file_path = os.path.join(folder, filename)
-
-    base_dir = os.path.abspath(folder)
-    target_path = os.path.abspath(file_path)
-    if not target_path.startswith(base_dir):
-        raise HTTPException(status_code=403, detail="Access denied.")
-    if not os.path.exists(file_path) or not os.path.isfile(file_path):
-        raise HTTPException(status_code=404, detail="File not found.")
-
-    media_type, _ = guess_type(file_path)
-    return FileResponse(file_path, media_type=media_type or "application/octet-stream", filename=filename)
+    base_dir = Path(share["folder"]).resolve()
+    
+    # Security Rule 1: Strip out directory separators to isolate the absolute base string
+    clean_filename = Path(filename).name
+    
+    # Security Rule 2: Force resolution under a combined absolute anchor check
+    target_path = (base_dir / clean_filename).resolve()
+    
+    # Security Rule 3: Validate boundaries to block path traversal manipulation attacks
+    if not target_path.is_relative_to(base_dir):
+        raise HTTPException(status_code=403, detail="Security violation: Out of boundary file request.")
+        
+    if not target_path.exists() or not target_path.is_file():
+        raise HTTPException(status_code=404, detail="The requested document file does not exist.")
+        
+    media_type, _ = guess_type(str(target_path))
+    return FileResponse(
+        path=target_path, 
+        media_type=media_type or "application/octet-stream", 
+        filename=target_path.name
+    )
