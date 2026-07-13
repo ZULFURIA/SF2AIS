@@ -1,3 +1,9 @@
+# ==============================================================================
+# AI-Gateway-FTP Core Service Terminal
+# Copyright (c) 2026 Wayne Thomas Dougall (ZULFURIA). All rights reserved.
+# Licensed under the Sf2AiS Noncommercial License v1.0.
+# Commercial use requires prior written permission from the copyright holder.
+# ==============================================================================
 import os
 import re
 import json
