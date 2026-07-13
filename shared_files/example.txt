@@ -1,0 +1,1 @@
+This is an example file. Drop the documents you want your AI assistant to read into this folder.
