@@ -64,6 +64,9 @@ it at your gateway and schedule it:
 - **Windows** — Task Scheduler, "repeat every 5 minutes"
 - **macOS / Linux** — a `cron` entry (`*/5 * * * * python3 /path/to/probe.py`)
 
+- still busy sorting out an issue with the probe not building correctly on windows. havent tested the mac or linux distro just yet
+welcome to do a fix if needed its a qiuck fix. just havent had the time to do this yet. wile i been fin shing up my production project.
+
 Full instructions are generated for you on the dashboard once you choose the
 "current IP" option.
 
