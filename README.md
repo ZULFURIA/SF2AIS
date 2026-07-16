@@ -4,6 +4,7 @@ A password-protected, self-hosted bridge that lets web-browsing AI chatbots
 (ChatGPT, Claude, Gemini, Copilot, etc.) securely browse, read, and download
 files from your own computer or home server — no API keys or MCP support
 required.
+also can be used to give a workspace to another users to work on .like an ftp server. but shares over http. all ai companys all going mcp routes and forgot there is a mich simpler way to do this. might not be as secure as an mcp. but this is for a qiuck 1 to 2 day work/share session. not ment to be always running. though it is as secure as i could ultimatly make it with my knowlidge base. havent tested any connection methods as yet as i am busy fixing the static ip and probe . should be fixed when i work on it this weekend again.
 
 ## What you get
 
