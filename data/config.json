@@ -1,0 +1,25 @@
+{
+  "admin": {
+    "username": "wayne",
+    "password_hash": "$2b$12$M9plgIDYW.z3Wmnz8c4i4.iyjZHPPfGa4dKw5RPTc6.bcixQWg6.W"
+  },
+  "network": {
+    "method": "probe",
+    "value": "",
+    "port": 8000,
+    "probe_token": "c8H9Yd9qNv2WyDaDVy27sqh6421JQaRe",
+    "last_public_ip": null,
+    "last_ip_update": null
+  },
+  "shares": [
+    {
+      "id": "4d97b194-0a81-4e3b-aa96-aae090ac7dc1",
+      "username": "creodevo",
+      "password_hash": "$2b$12$KnCltMyQioBRcDb7.Gj/w.0xAyGYLFCtVIR8FTbv0cwG9MdiryXci",
+      "folder": "D:\\CreoDevo",
+      "last_seen": null,
+      "cli_enabled": true,
+      "tunnel_enabled": true
+    }
+  ]
+}

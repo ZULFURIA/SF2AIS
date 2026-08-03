@@ -1,0 +1,24 @@
+[Unit]
+Description=Sf2AiS - Secure Files to AI Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sf2ais
+Group=sf2ais
+WorkingDirectory=/opt/sf2ais
+ExecStart=/opt/sf2ais/venv/bin/python /opt/sf2ais/main.py
+Restart=on-failure
+RestartSec=5
+
+# Basic hardening - deliberately NOT using ProtectSystem=strict or a
+# restrictive filesystem allowlist here, because the CLI/tunnel features
+# need real access to whatever folders shares are configured against.
+# Tighten this per-deployment if you know your shares are confined to a
+# specific subtree.
+NoNewPrivileges=false
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+
+[Install]
+WantedBy=multi-user.target
