@@ -1,10 +1,18 @@
 # Sf2AiS (aka: AI-Gateway-FTP) — Secure Files to AI Server 🤖📂
 
 A password-protected, self-hosted bridge that lets web-browsing AI chatbots
-(ChatGPT, Claude, Gemini, Copilot, etc.) securely browse, read, and download
-files from your own computer or home server — no API keys or MCP support
-required.
-also can be used to give a workspace to another users to work on .like an ftp server. but shares over http. all ai companys all going mcp routes and forgot there is a mich simpler way to do this. might not be as secure as an mcp. but this is for a qiuck 1 to 2 day work/share session. not ment to be always running. though it is as secure as i could ultimatly make it with my knowlidge base. havent tested any connection methods as yet as i am busy fixing the static ip and probe . should be fixed when i work on it this weekend again.
+(ChatGPT, Claude, Gemini, Copilot, etc.) — or another person — securely
+browse, read, and download files on your own computer or home server, run
+debugging/test commands, and even temporarily view a running dev server.
+No API keys or MCP support required on the AI's side.
+
+Also works as a plain workspace-sharing tool between people — like an FTP
+server that happens to share over HTTP. All the AI companies went the MCP
+route and forgot there's a much simpler way to do this for a quick session.
+Not as locked-down as a proper MCP integration, but built for a focused
+hours-to-a-few-days work/debug session — not meant to run 24/7 as
+production infrastructure. Every capability beyond plain file browsing is
+opt-in per share and off by default.
 
 ## What you get
 
@@ -13,10 +21,38 @@ also can be used to give a workspace to another users to work on .like an ftp se
   number, special character)
 - Support for a **custom domain**, **dynamic DNS**, a **static IP**, or your
   **current IP with an auto-updating probe** (works on Windows, macOS, Linux)
+- A built-in **DuckDNS updater** — the probe pushes your current IP straight
+  to a free DuckDNS hostname whenever it changes, no separate script needed
 - A **live dashboard**: online/offline status, your current shareable link,
-  and which logins are actively connected
+  DDNS status, and which logins are actively connected
 - **Multiple shares**: give different folders their own separate
-  username/password pairs, added anytime from the dashboard
+  username/password pairs, added anytime from the dashboard, each with its
+  own independent CLI/tunnel permissions
+
+### Per-share optional features
+
+Each share can independently turn on:
+
+- **CLI execution** — run `bash`, `powershell`, or `cmd` commands scoped to
+  that share's folder, for actual debugging/testing rather than just reading
+  files. Async job model (`POST /cli/jobs` → poll `GET /cli/jobs/{id}`), so
+  long test runs don't block on one HTTP request. Hard runtime cap, output
+  truncation, sandboxed to the share's folder the same way file downloads are.
+- **Temporary debug tunnels** — briefly expose a local dev server (e.g. a
+  Vite/webpack dev server) to the public internet via your router's UPnP, so
+  an AI or a reviewer can actually see what was built. Auto-expires (30 min
+  default, 2 hour hard cap); can be closed early. Optional `verify: true`
+  does a reachability check using whichever public address source you've
+  already configured (domain/static/DDNS/probe), instead of guessing.
+- **Isolation mode (Windows only, for now)** — instead of forwarding your
+  router's port straight to your real machine, a tunnel can bind a throwaway
+  `/32` alias IP, scope Windows Firewall rules to that alias + port + an
+  explicit remote allowlist, and relay bytes to your dev server over
+  loopback. The rest of the machine stays invisible even to other devices on
+  your own LAN. All native (`ctypes` IP Helper API + `pywin32` COM firewall
+  calls) — no `.ps1` scripts, no shelling out to `netsh`. Live-tested,
+  round-trip validated (alias IP + firewall rules added, verified, and torn
+  down cleanly).
 
 ## Running it
 
@@ -25,6 +61,8 @@ also can be used to give a workspace to another users to work on .like an ftp se
 pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
+On Windows, also `pip install pywin32` if you want isolation mode available
+(everything else works without it — isolation just reports unsupported).
 
 ### With Docker
 ```bash
@@ -32,7 +70,47 @@ docker-compose up -d
 ```
 If you plan to share folders that live elsewhere on your host machine, add a
 volume line for each one in `docker-compose.yml` before starting the wizard
-(see the comments in that file).
+(see the comments in that file). Note: CLI execution, tunnels, and isolation
+mode all need real access to the host — they lose capability (or don't work
+at all) once containerized, since they're built to reach outside the
+sandbox by design. File-only sharing works fine in Docker; treat the rest as
+a native-install feature for now.
+
+### Linux (tarball + systemd) — no distro package manager needed
+
+Works identically across Debian/Ubuntu/Mint/KDE neon/Kali, Arch, and
+Fedora/RHEL/CentOS/SUSE — one build, no `.deb`/`.rpm`/`PKGBUILD` juggling,
+since there's nothing distro-specific for a dependency manager to resolve
+here in the first place.
+
+```bash
+# build the distributable tarball (from packaging/linux/)
+./packaging/linux/build-tarball.sh
+
+# on the target machine
+tar xzf sf2ais-linux.tar.gz
+cd sf2ais-linux
+sudo ./install.sh
+```
+
+This creates a dedicated `sf2ais` system user, a Python venv under
+`/opt/sf2ais`, and a `systemd` unit granting `CAP_NET_ADMIN`/`CAP_NET_RAW`
+(needed once the isolation layer is ported to Linux's `iptables`, not yet
+built). Manage it the normal way:
+
+```bash
+systemctl status sf2ais
+journalctl -u sf2ais -f
+sudo ./uninstall.sh   # asks before touching your shared_files/config
+```
+
+### Windows installer / macOS .app
+
+Not built yet — discussed as a `PyInstaller` + Inno Setup/NSIS pass for
+Windows, and `PyInstaller --windowed` + `.dmg` for macOS. For now, run it
+directly with Python as above on both.
+
+---
 
 Then open `http://localhost:8000` (or your server's address) in a browser.
 
@@ -47,29 +125,56 @@ Then open `http://localhost:8000` (or your server's address) in a browser.
    - **Static IP** — your public IP never changes
    - **Current IP + probe** (recommended if you're not sure) — Sf2AiS gives you
      a small script for whichever computer stays on; it checks your public IP
-     every 5 minutes and updates your link automatically if it changes.
+     every 5 minutes and updates your link automatically if it changes, and
+     will push that update to DuckDNS too if you've set a token on the
+     dashboard.
 4. **Choose folders** — add one or more folders to share. Each one
    automatically gets its own generated username and password, shown once on
-   the finish screen — save them!
+   the finish screen — save them! You can also allow CLI execution and/or
+   temporary debug tunnels for the whole batch here, or fine-tune per-share
+   later from the dashboard.
 5. **Dashboard** — shows your live shareable link, an online/offline status
-   badge, a table of all shares with connection status, and a **+ Add Share**
-   button to create more username/password pairs for additional folders at
-   any time.
+   badge, DDNS status with a form to set/update your DuckDNS subdomain and
+   token, a table of all shares with connection status and independent
+   CLI/Tunnel toggles, and a **+ Add Share** button to create more
+   username/password pairs (with their own CLI/tunnel permissions) at any time.
 
 ## The IP probe
 
-Installers for Windows/macOS/Linux IP update probe ships as a small cross-platform
-**Python script** instead — it works identically on all three, you just point
-it at your gateway and schedule it:
+The IP update probe ships as a small cross-platform **Python script** — it
+works identically on Windows/macOS/Linux, you just point it at your gateway
+and schedule it:
 
 - **Windows** — Task Scheduler, "repeat every 5 minutes"
 - **macOS / Linux** — a `cron` entry (`*/5 * * * * python3 /path/to/probe.py`)
 
-- still busy sorting out an issue with the probe not building correctly on windows. havent tested the mac or linux distro just yet
-welcome to do a fix if needed its a qiuck fix. just havent had the time to do this yet. wile i been fin shing up my production project.
-
 Full instructions are generated for you on the dashboard once you choose the
-"current IP" option.
+"current IP" option. If you've also set a DuckDNS domain/token on the
+dashboard, every probe update pushes straight through to DuckDNS too — no
+separate DDNS client needed.
+
+## API reference (for AI assistants / scripting)
+
+All endpoints below require the share's Basic Auth credentials and are only
+available if the relevant feature is turned on for that share.
+
+**Files** (always available):
+- `GET /files` and download routes — browse/read the share's folder
+
+**CLI** (needs `cli_enabled` on the share):
+- `POST /cli/jobs` — `{"command": "...", "shell": "bash"|"powershell"|"cmd"|"auto", "cwd": "optional/subpath"}` → `{"job_id", "status"}`
+- `GET /cli/jobs/{job_id}` — poll for `status`/`stdout`/`stderr`/`exit_code`
+- `GET /cli/jobs` — last 50 jobs for that share
+
+**Tunnels** (needs `tunnel_enabled` on the share):
+- `GET /tunnel/interfaces` — list local network interfaces (for isolation mode's alias-IP picker)
+- `POST /tunnel/open` — `{"local_port", "protocol": "TCP"|"UDP", "ttl_seconds", "external_port", "verify": bool, "isolate": bool, "alias_ip", "interface_index", "trusted_remotes": ["1.2.3.4", "10.0.0.0/24"]}` → `{"tunnel_id", "public_url", "expires_in_seconds", "verify_result", "isolated"}`
+- `POST /tunnel/{tunnel_id}/close` — close early
+- `GET /tunnel` — list open/recent tunnels for that share
+
+**Dashboard** (admin credentials, not share credentials):
+- `POST /dashboard/ddns` — set DuckDNS `domain`/`token`
+- `POST /dashboard/shares/{id}/toggle-cli`, `.../toggle-tunnel` — flip per-share permissions
 
 ## Security notes
 
@@ -81,7 +186,15 @@ Full instructions are generated for you on the dashboard once you choose the
   Tunnel) rather than exposing plain HTTP directly, especially for the static
   IP / current-IP options.
 - Anyone with a share's username/password can read every file in that share's
-  folder — only add folders you're comfortable to an external AI service reading.
+  folder — only add folders you're comfortable with an external AI service
+  reading. If CLI execution is also on for that share, they can run arbitrary
+  commands scoped to that folder — treat that credential like a limited shell
+  account, not just a file-read password.
+- **Tunnels are real, if temporary, internet exposure.** A dev server wasn't
+  built to be internet-facing — keep exposure windows short (the defaults
+  do this for you) and prefer isolation mode where it's available.
+- Isolation mode is Windows-only right now; on Linux/macOS a tunnel still
+  works, just without the alias-IP/firewall scoping layer.
 - Path traversal protection is included, but this project hasn't had a
   professional security audit — use it at your own risk on a home server.
 - To reset your dashboard login or start over, stop the server and delete

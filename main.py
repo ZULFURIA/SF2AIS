@@ -21,6 +21,15 @@ from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse, JSON
 from fastapi.staticfiles import StaticFiles
 from passlib.hash import bcrypt
 
+try:
+    import micro_firewall
+    MICRO_FIREWALL_AVAILABLE = micro_firewall.is_supported()
+except Exception:
+    micro_firewall = None
+    MICRO_FIREWALL_AVAILABLE = False
+
+import ddns as ddns_module
+
 APP_NAME = "Sf2AiS"
 APP_TAGLINE = "Secure Files to AI Server"
 
@@ -43,10 +52,28 @@ PROBE_ONLINE_WINDOW_SECONDS = 15 * 60
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
+def _resolve_secrets(obj):
+    """Replace ${ENV_VAR} placeholders with environment values.
+
+    Credentials (probe token, DDNS token) are stored as ${SF2AIS_*} placeholders
+    in data/config.json so no secret is ever committed. They resolve at load time
+    from the environment, falling back to the literal value if no env var is set
+    (so a plaintext value still works for local dev).
+    """
+    if isinstance(obj, dict):
+        return {k: _resolve_secrets(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_resolve_secrets(v) for v in obj]
+    if isinstance(obj, str) and obj.startswith("${") and obj.endswith("}"):
+        name = obj[2:-1]
+        return os.environ.get(name, obj)
+    return obj
+
 def load_config():
     if CONFIG_PATH.exists():
         try:
-            return json.loads(CONFIG_PATH.read_text())
+            raw = json.loads(CONFIG_PATH.read_text())
+            return _resolve_secrets(raw)
         except Exception:
             return None
     return None
@@ -398,6 +425,21 @@ async def setup_network_submit(request: Request):
                 </div>
             </div>
             <button type="button" class="secondary small" onclick="addFolder()">+ Add another folder</button>
+
+            <label style="display:flex; align-items:flex-start; gap:8px; margin-top:16px;">
+                <input type="checkbox" name="cli_enabled" style="width:auto; margin-top:3px;">
+                <span>Allow command execution (CLI) - lets your AI run shell/PowerShell commands for
+                debugging and testing, not just read files. Applies to all folders above; you can turn it
+                on/off per folder later from the dashboard. Only enable if you trust this AI environment.</span>
+            </label>
+
+            <label style="display:flex; align-items:flex-start; gap:8px; margin-top:10px;">
+                <input type="checkbox" name="tunnel_enabled" style="width:auto; margin-top:3px;">
+                <span>Allow temporary debug tunnels - lets your AI briefly expose a local dev server
+                (e.g. a Vite/webpack server) to the public internet via your router's UPnP, so it can view
+                what it built. Requires UPnP support on your router; sessions auto-expire.</span>
+            </label>
+
             <button type="submit">Continue &rarr;</button>
         </form>
         <script>
@@ -430,6 +472,8 @@ async def setup_folders_submit(request: Request):
     folders = [f.strip() for f in form.getlist("folder") if f.strip()]
     if not folders:
         folders = ["./shared_files"]
+    cli_enabled = (form.get("cli_enabled") == "on")
+    tunnel_enabled = (form.get("tunnel_enabled") == "on")
 
     shares = []
     generated_creds = []
@@ -451,6 +495,8 @@ async def setup_folders_submit(request: Request):
             "password_hash": bcrypt.hash(share_password),
             "folder": str(Path(folder).resolve()),
             "last_seen": None,
+            "cli_enabled": cli_enabled,
+            "tunnel_enabled": tunnel_enabled,
         }
         shares.append(share)
         generated_creds.append({"username": share_username, "password": share_password, "folder": folder})
@@ -516,6 +562,17 @@ def dashboard(admin: str = Depends(admin_auth)):
     config = load_config()
     link = build_share_link(config)
     net_online, net_msg = network_online_status(config)
+
+    ddns_cfg = config.get("network", {}).get("ddns") or {}
+    ddns_domain = ddns_cfg.get("domain", "")
+    if ddns_cfg.get("domain") and ddns_cfg.get("token"):
+        last = ddns_cfg.get("last_result")
+        if last:
+            ddns_status = "%s (%s)" % (last.get("message", ""), "OK" if last.get("ok") else "failed")
+        else:
+            ddns_status = "Configured for %s.duckdns.org - waiting for the next IP check." % ddns_domain
+    else:
+        ddns_status = "Not configured. Get a free token at duckdns.org, add a subdomain there, then enter it below."
     badge_cls = "online" if net_online else "offline"
     badge_text = "Online" if net_online else "Offline"
 
@@ -531,6 +588,14 @@ def dashboard(admin: str = Depends(admin_auth)):
             seen_label = "just now" if mins < 1 else "%d min ago" % mins
         s_badge = "online" if online else "offline"
         s_text = "Connected" if online else "Offline"
+        cli_on = s.get("cli_enabled", False)
+        cli_badge = "online" if cli_on else "offline"
+        cli_text = "Enabled" if cli_on else "Disabled"
+        cli_btn_label = "Disable" if cli_on else "Enable"
+        tunnel_on = s.get("tunnel_enabled", False)
+        tunnel_badge = "online" if tunnel_on else "offline"
+        tunnel_text = "Enabled" if tunnel_on else "Disabled"
+        tunnel_btn_label = "Disable" if tunnel_on else "Enable"
         rows += """
         <tr>
             <td>%s</td>
@@ -538,12 +603,27 @@ def dashboard(admin: str = Depends(admin_auth)):
             <td><span class="badge %s"><span class="pulse"></span>%s</span></td>
             <td>%s</td>
             <td>
+                <span class="badge %s">%s</span>
+                <form method="post" action="/dashboard/shares/%s/toggle-cli" style="display:inline; margin-left:6px;">
+                    <button type="submit" class="secondary small">%s</button>
+                </form>
+            </td>
+            <td>
+                <span class="badge %s">%s</span>
+                <form method="post" action="/dashboard/shares/%s/toggle-tunnel" style="display:inline; margin-left:6px;">
+                    <button type="submit" class="secondary small">%s</button>
+                </form>
+            </td>
+            <td>
                 <form method="post" action="/dashboard/shares/%s/delete" style="margin:0;">
                     <button type="submit" class="danger small">Remove</button>
                 </form>
             </td>
         </tr>
-        """ % (s['folder'], s['username'], s_badge, s_text, seen_label, s['id'])
+        """ % (s['folder'], s['username'], s_badge, s_text, seen_label,
+               cli_badge, cli_text, s['id'], cli_btn_label,
+               tunnel_badge, tunnel_text, s['id'], tunnel_btn_label,
+               s['id'])
 
     body = brand_header() + ("""
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
@@ -560,9 +640,25 @@ def dashboard(admin: str = Depends(admin_auth)):
             </div>
         </div>
 
+        <div class="card-sm" style="margin-top:16px;">
+            <div class="label">DDNS (DuckDNS)</div>
+            <p class="sub" style="margin-top:4px;">%s</p>
+            <form method="post" action="/dashboard/ddns" style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+                <div>
+                    <label style="display:block; font-size:12px;">Subdomain</label>
+                    <input type="text" name="domain" placeholder="wayne-debug" value="%s" style="width:160px;">
+                </div>
+                <div>
+                    <label style="display:block; font-size:12px;">Token</label>
+                    <input type="password" name="token" placeholder="duckdns token" style="width:220px;">
+                </div>
+                <button type="submit" class="secondary small">Save</button>
+            </form>
+        </div>
+
         <h2 style="margin-top:30px;">Shares</h2>
         <table>
-            <thead><tr><th>Folder</th><th>Username</th><th>Status</th><th>Last seen</th><th></th></tr></thead>
+            <thead><tr><th>Folder</th><th>Username</th><th>Status</th><th>Last seen</th><th>CLI</th><th>Tunnel</th><th></th></tr></thead>
             <tbody>%s</tbody>
         </table>
 
@@ -586,6 +682,14 @@ def dashboard(admin: str = Depends(admin_auth)):
                         <li id="r-digit">One number</li>
                         <li id="r-special">One special character</li>
                     </ul>
+                    <label style="display:flex; align-items:flex-start; gap:8px; margin-top:10px;">
+                        <input type="checkbox" name="cli_enabled" style="width:auto; margin-top:3px;">
+                        <span>Allow command execution (CLI) for this share.</span>
+                    </label>
+                    <label style="display:flex; align-items:flex-start; gap:8px; margin-top:8px;">
+                        <input type="checkbox" name="tunnel_enabled" style="width:auto; margin-top:3px;">
+                        <span>Allow temporary debug tunnels for this share.</span>
+                    </label>
                     <div style="display:flex; gap:10px;">
                         <button type="button" class="secondary" onclick="document.getElementById('add-modal').classList.remove('open')">Cancel</button>
                         <button type="submit">Create Share</button>
@@ -614,7 +718,7 @@ def dashboard(admin: str = Depends(admin_auth)):
         }
         setInterval(function(){ location.reload(); }, 15000);
         </script>
-    """ % (badge_cls, badge_text, net_msg, link, rows))
+    """ % (badge_cls, badge_text, net_msg, link, ddns_status, ddns_domain, rows))
     return page("Dashboard", body, wide=True)
 
 @app.post("/dashboard/shares/add", response_class=HTMLResponse)
@@ -649,7 +753,44 @@ async def add_share(request: Request, admin: str = Depends(admin_auth)):
         "password_hash": bcrypt.hash(password),
         "folder": str(Path(folder).resolve()),
         "last_seen": None,
+        "cli_enabled": (form.get("cli_enabled") == "on"),
+        "tunnel_enabled": (form.get("tunnel_enabled") == "on"),
     })
+    save_config(config)
+    return RedirectResponse(url="/dashboard", status_code=303)
+
+@app.post("/dashboard/shares/{share_id}/toggle-cli")
+def toggle_cli(share_id: str, admin: str = Depends(admin_auth)):
+    config = load_config()
+    for s in config.get("shares", []):
+        if s["id"] == share_id:
+            s["cli_enabled"] = not s.get("cli_enabled", False)
+    save_config(config)
+    return RedirectResponse(url="/dashboard", status_code=303)
+
+@app.post("/dashboard/ddns")
+async def set_ddns(request: Request, admin: str = Depends(admin_auth)):
+    form = await request.form()
+    domain = (form.get("domain") or "").strip()
+    token = (form.get("token") or "").strip()
+    config = load_config()
+    network = config.setdefault("network", {})
+    existing = network.get("ddns") or {}
+    network["ddns"] = {
+        "provider": "duckdns",
+        "domain": domain or existing.get("domain", ""),
+        "token": token or existing.get("token", ""),
+        "last_result": existing.get("last_result"),
+    }
+    save_config(config)
+    return RedirectResponse(url="/dashboard", status_code=303)
+
+@app.post("/dashboard/shares/{share_id}/toggle-tunnel")
+def toggle_tunnel(share_id: str, admin: str = Depends(admin_auth)):
+    config = load_config()
+    for s in config.get("shares", []):
+        if s["id"] == share_id:
+            s["tunnel_enabled"] = not s.get("tunnel_enabled", False)
     save_config(config)
     return RedirectResponse(url="/dashboard", status_code=303)
 
@@ -695,6 +836,12 @@ async def ip_update(request: Request):
         raise HTTPException(status_code=400, detail="Invalid IP format.")
     config["network"]["last_public_ip"] = ip
     config["network"]["last_ip_update"] = now_iso()
+    ddns_cfg = config.get("network", {}).get("ddns")
+    if ddns_cfg and ddns_cfg.get("token") and ddns_cfg.get("domain"):
+        ok, msg = ddns_module.update(
+            ddns_cfg.get("provider", "duckdns"), ddns_cfg["domain"], ddns_cfg["token"], ip
+        )
+        config["network"]["ddns"]["last_result"] = {"ok": ok, "message": msg, "at": now_iso()}
     save_config(config)
     return {"ok": True}
 
@@ -787,6 +934,511 @@ def probe_setup_guide():
         <a class="btn secondary" style="margin-top:20px;" href="/dashboard">Back to dashboard</a>
     """
     return page("Probe Setup", body)
+
+# ---------------------------------------------------------------------------
+# CLI execution (opt-in, per-share) - lets an AI assistant run shell / PowerShell
+# commands for debugging and testing, alongside the read-only file endpoints.
+# Off by default; a share must have cli_enabled=True to use these routes.
+# ---------------------------------------------------------------------------
+import subprocess
+import threading
+import platform
+
+CLI_JOBS = {}
+CLI_JOBS_LOCK = threading.Lock()
+CLI_MAX_RUNTIME_SECONDS = 600     # hard kill after 10 minutes
+CLI_MAX_OUTPUT_CHARS = 200_000    # truncate huge output
+
+
+def default_shell() -> str:
+    return "powershell" if platform.system() == "Windows" else "bash"
+
+
+def build_shell_command(shell: str, command: str):
+    shell = (shell or "auto").lower()
+    if shell == "auto":
+        shell = default_shell()
+    if shell == "powershell":
+        return ["powershell", "-NoProfile", "-NonInteractive", "-Command", command]
+    if shell == "cmd":
+        return ["cmd", "/c", command]
+    if shell == "bash":
+        return ["bash", "-lc", command]
+    raise ValueError("Unsupported shell: %s" % shell)
+
+
+def resolve_cli_cwd(share: dict, requested: str) -> Path:
+    base_dir = Path(share["folder"]).resolve()
+    if not requested:
+        return base_dir
+    candidate = (base_dir / requested).resolve()
+    if not candidate.is_relative_to(base_dir):
+        raise HTTPException(status_code=403, detail="cwd must stay inside the share folder.")
+    if not candidate.exists() or not candidate.is_dir():
+        raise HTTPException(status_code=400, detail="cwd does not exist.")
+    return candidate
+
+
+def require_cli_enabled(share: dict):
+    if not share.get("cli_enabled"):
+        raise HTTPException(status_code=403, detail="CLI access is disabled for this share.")
+
+
+def _run_cli_job(job_id: str, shell: str, command: str, cwd: Path):
+    job = CLI_JOBS[job_id]
+    try:
+        argv = build_shell_command(shell, command)
+    except ValueError as e:
+        job["status"] = "failed"
+        job["stderr"] = str(e)
+        job["finished_at"] = now_iso()
+        return
+
+    try:
+        proc = subprocess.Popen(
+            argv, cwd=str(cwd),
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True,
+        )
+    except FileNotFoundError:
+        job["status"] = "failed"
+        job["stderr"] = "Shell '%s' is not available on this host." % shell
+        job["finished_at"] = now_iso()
+        return
+
+    job["pid"] = proc.pid
+    try:
+        stdout, stderr = proc.communicate(timeout=CLI_MAX_RUNTIME_SECONDS)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        stdout, stderr = proc.communicate()
+        job["status"] = "timeout"
+        job["stdout"] = (stdout or "")[:CLI_MAX_OUTPUT_CHARS]
+        job["stderr"] = ((stderr or "") + "\n[killed: exceeded %ds runtime limit]" % CLI_MAX_RUNTIME_SECONDS)[:CLI_MAX_OUTPUT_CHARS]
+        job["exit_code"] = None
+        job["finished_at"] = now_iso()
+        return
+
+    job["status"] = "completed"
+    job["stdout"] = (stdout or "")[:CLI_MAX_OUTPUT_CHARS]
+    job["stderr"] = (stderr or "")[:CLI_MAX_OUTPUT_CHARS]
+    job["exit_code"] = proc.returncode
+    job["finished_at"] = now_iso()
+
+
+@app.post("/cli/jobs")
+async def cli_create_job(request: Request, share: dict = Depends(share_auth)):
+    require_cli_enabled(share)
+    data = await request.json()
+    command = (data.get("command") or "").strip()
+    if not command:
+        raise HTTPException(status_code=400, detail="'command' is required.")
+    shell = data.get("shell") or share.get("cli_shell") or "auto"
+    cwd = resolve_cli_cwd(share, data.get("cwd") or "")
+
+    job_id = str(uuid.uuid4())
+    with CLI_JOBS_LOCK:
+        CLI_JOBS[job_id] = {
+            "id": job_id, "share_id": share["id"], "command": command,
+            "shell": shell, "cwd": str(cwd), "status": "running",
+            "stdout": "", "stderr": "", "exit_code": None,
+            "started_at": now_iso(), "finished_at": None,
+        }
+    thread = threading.Thread(target=_run_cli_job, args=(job_id, shell, command, cwd), daemon=True)
+    thread.start()
+    return JSONResponse({"job_id": job_id, "status": "running"})
+
+
+@app.get("/cli/jobs/{job_id}")
+def cli_get_job(job_id: str, share: dict = Depends(share_auth)):
+    require_cli_enabled(share)
+    job = CLI_JOBS.get(job_id)
+    if not job or job["share_id"] != share["id"]:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    return JSONResponse(job)
+
+
+@app.get("/cli/jobs")
+def cli_list_jobs(share: dict = Depends(share_auth)):
+    require_cli_enabled(share)
+    jobs = [j for j in CLI_JOBS.values() if j["share_id"] == share["id"]]
+    jobs.sort(key=lambda j: j["started_at"], reverse=True)
+    return JSONResponse({"jobs": jobs[:50]})
+
+
+# ---------------------------------------------------------------------------
+# Temporary debug tunnels (UPnP IGD port forwarding) - opt-in, per-share.
+# Lets an AI expose a local dev server (e.g. localhost:5173) to the public
+# internet for a short, bounded window to visually check work in progress.
+# Requires the router to support UPnP IGD; fails clearly if it doesn't
+# (common on CGNAT connections, where there's no public IP to forward on
+# the router in the first place).
+# ---------------------------------------------------------------------------
+import time as time_mod
+import xml.etree.ElementTree as ET
+import http.client
+import urllib.request as _urllib_request
+from urllib.parse import urlparse
+
+TUNNELS = {}
+TUNNELS_LOCK = threading.Lock()
+TUNNEL_MAX_TTL_SECONDS = 7200      # hard cap: 2 hours
+TUNNEL_DEFAULT_TTL_SECONDS = 1800  # default: 30 min
+SSDP_TIMEOUT = 3
+
+
+def upnp_discover():
+    """Multicast SSDP search for an Internet Gateway Device. Returns
+    (control_url, service_type) or raises RuntimeError with a clear reason."""
+    msg = (
+        "M-SEARCH * HTTP/1.1\r\n"
+        "HOST: 239.255.255.250:1900\r\n"
+        "MAN: \"ssdp:discover\"\r\n"
+        "MX: 2\r\n"
+        "ST: urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\n\r\n"
+    ).encode()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(SSDP_TIMEOUT)
+    sock.sendto(msg, ("239.255.255.250", 1900))
+    location = None
+    try:
+        while True:
+            data, _ = sock.recvfrom(65507)
+            text = data.decode(errors="ignore")
+            for line in text.split("\r\n"):
+                if line.lower().startswith("location:"):
+                    location = line.split(":", 1)[1].strip()
+                    break
+            if location:
+                break
+    except socket.timeout:
+        pass
+    finally:
+        sock.close()
+
+    if not location:
+        raise RuntimeError("No UPnP gateway responded. Your router may not support UPnP, "
+                            "may have it disabled, or you may be behind CGNAT with no public IP.")
+
+    parsed = urlparse(location)
+    conn = http.client.HTTPConnection(parsed.hostname, parsed.port or 80, timeout=SSDP_TIMEOUT)
+    conn.request("GET", parsed.path or "/")
+    resp = conn.getresponse()
+    desc_xml = resp.read()
+    conn.close()
+
+    root = ET.fromstring(desc_xml)
+    control_url = None
+    service_type = None
+    for service in root.iter():
+        tag = service.tag.rsplit("}", 1)[-1]
+        if tag != "service":
+            continue
+        st, cu = "", ""
+        for child in service:
+            ctag = child.tag.rsplit("}", 1)[-1]
+            if ctag == "serviceType":
+                st = child.text or ""
+            elif ctag == "controlURL":
+                cu = child.text or ""
+        if "WANIPConnection" in st or "WANPPPConnection" in st:
+            control_url, service_type = cu, st
+            break
+
+    if not control_url:
+        raise RuntimeError("Router responded but exposed no WANIPConnection/WANPPPConnection service.")
+
+    base = "%s://%s:%s" % (parsed.scheme, parsed.hostname, parsed.port or 80)
+    if not control_url.startswith("http"):
+        control_url = base + ("" if control_url.startswith("/") else "/") + control_url
+    return control_url, service_type
+
+
+def upnp_soap_call(control_url: str, service_type: str, action: str, args: dict) -> str:
+    parsed = urlparse(control_url)
+    args_xml = "".join("<%s>%s</%s>" % (k, v, k) for k, v in args.items())
+    body = (
+        '<?xml version="1.0"?>'
+        '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" '
+        's:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">'
+        '<s:Body><u:%s xmlns:u="%s">%s</u:%s></s:Body></s:Envelope>'
+    ) % (action, service_type, args_xml, action)
+
+    conn = http.client.HTTPConnection(parsed.hostname, parsed.port or 80, timeout=SSDP_TIMEOUT)
+    headers = {
+        "Content-Type": 'text/xml; charset="utf-8"',
+        "SOAPAction": '"%s#%s"' % (service_type, action),
+    }
+    conn.request("POST", parsed.path, body=body, headers=headers)
+    resp = conn.getresponse()
+    result = resp.read().decode(errors="ignore")
+    conn.close()
+    if resp.status >= 300:
+        raise RuntimeError("Router rejected %s: HTTP %d - %s" % (action, resp.status, result[:300]))
+    return result
+
+
+def local_outbound_ip() -> str:
+    try:
+        probe_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        probe_sock.connect(("8.8.8.8", 80))
+        ip = probe_sock.getsockname()[0]
+        probe_sock.close()
+        return ip
+    except OSError:
+        return socket.gethostbyname(socket.gethostname())
+
+
+def upnp_add_port_mapping(external_port: int, internal_port: int, protocol: str, description: str,
+                           ttl_seconds: int, override_internal_ip: str = None):
+    control_url, service_type = upnp_discover()
+    local_ip = override_internal_ip or local_outbound_ip()
+    upnp_soap_call(control_url, service_type, "AddPortMapping", {
+        "NewRemoteHost": "",
+        "NewExternalPort": external_port,
+        "NewProtocol": protocol,
+        "NewInternalPort": internal_port,
+        "NewInternalClient": local_ip,
+        "NewEnabled": "1",
+        "NewPortMappingDescription": description,
+        "NewLeaseDuration": ttl_seconds,
+    })
+    return control_url, service_type, local_ip
+
+
+def upnp_delete_port_mapping(control_url: str, service_type: str, external_port: int, protocol: str):
+    upnp_soap_call(control_url, service_type, "DeletePortMapping", {
+        "NewRemoteHost": "",
+        "NewExternalPort": external_port,
+        "NewProtocol": protocol,
+    })
+
+
+def get_public_ip_quick() -> str:
+    try:
+        with _urllib_request.urlopen("https://api.ipify.org", timeout=5) as r:
+            return r.read().decode().strip()
+    except Exception:
+        return ""
+
+
+def resolve_public_host(config) -> str:
+    """Reuse whatever public-address source is already configured for the
+    gateway itself (domain/static value, or the IP probe's last report),
+    instead of making a fresh external lookup."""
+    network = config.get("network", {})
+    method = network.get("method")
+    if method in ("domain", "ddns", "static"):
+        return network.get("value") or ""
+    if method == "probe":
+        return network.get("last_public_ip") or ""
+    return ""
+
+
+def verify_tunnel_reachable(host: str, port: int, protocol: str, timeout: float = 4.0):
+    """Best-effort connect-back test. Only meaningful for TCP, and only as a
+    positive signal - a failure here doesn't always mean the port is actually
+    unreachable from the real internet, since many routers don't support NAT
+    hairpinning (connecting to your own public IP from inside the LAN)."""
+    if protocol != "TCP":
+        return None, "Reachability verification only supports TCP."
+    if not host:
+        return False, "No public IP available to verify against yet (probe hasn't checked in, or network method isn't configured)."
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True, "Connected successfully to %s:%s." % (host, port)
+    except Exception as e:
+        return False, ("Could not connect to %s:%s (%s). Note: some routers block NAT hairpinning, "
+                       "so this can fail even when the port is reachable from outside your network - "
+                       "if unsure, confirm with an external port checker.") % (host, port, str(e))
+
+
+def _close_tunnel(tunnel_id: str, reason: str):
+    with TUNNELS_LOCK:
+        t = TUNNELS.get(tunnel_id)
+        if not t or t["status"] != "open":
+            return
+        t["status"] = "closed"
+        t["closed_reason"] = reason
+    try:
+        upnp_delete_port_mapping(t["control_url"], t["service_type"], t["external_port"], t["protocol"])
+    except Exception as e:
+        t["close_error"] = str(e)
+    if t.get("isolate"):
+        stop_event = t.get("relay_stop_event")
+        if stop_event is not None:
+            try:
+                stop_event.set()
+            except Exception as e:
+                t["relay_cleanup_error"] = str(e)
+        try:
+            micro_firewall.remove_firewall_rules(t["fw_prefix"])
+        except Exception as e:
+            t["fw_cleanup_error"] = str(e)
+        try:
+            micro_firewall.remove_alias_ip(t["nte_context"])
+        except Exception as e:
+            t["ip_cleanup_error"] = str(e)
+
+
+def _public_tunnel_view(t: dict) -> dict:
+    return {k: v for k, v in t.items() if k not in ("relay_stop_event", "nte_context")}
+
+
+def _tunnel_expiry_watcher(tunnel_id: str, ttl_seconds: int):
+    time_mod.sleep(ttl_seconds)
+    with TUNNELS_LOCK:
+        t = TUNNELS.get(tunnel_id)
+    if t and t["status"] == "open":
+        _close_tunnel(tunnel_id, reason="expired")
+
+
+def require_tunnel_enabled(share: dict):
+    if not share.get("tunnel_enabled"):
+        raise HTTPException(status_code=403, detail="Temporary tunnels are disabled for this share.")
+
+
+@app.get("/tunnel/interfaces")
+def tunnel_interfaces(share: dict = Depends(share_auth)):
+    require_tunnel_enabled(share)
+    if not MICRO_FIREWALL_AVAILABLE:
+        return JSONResponse({
+            "supported": False, "interfaces": [],
+            "reason": "Isolation mode requires Windows with pywin32 installed.",
+        })
+    try:
+        return JSONResponse({"supported": True, "interfaces": micro_firewall.list_interfaces()})
+    except Exception as e:
+        return JSONResponse({"supported": False, "interfaces": [], "reason": str(e)})
+
+
+@app.post("/tunnel/open")
+async def tunnel_open(request: Request, share: dict = Depends(share_auth)):
+    require_tunnel_enabled(share)
+    data = await request.json()
+    local_port = int(data.get("local_port", 0))
+    if not (1 <= local_port <= 65535):
+        raise HTTPException(status_code=400, detail="local_port must be 1-65535.")
+    protocol = (data.get("protocol") or "TCP").upper()
+    if protocol not in ("TCP", "UDP"):
+        raise HTTPException(status_code=400, detail="protocol must be TCP or UDP.")
+    ttl_seconds = min(int(data.get("ttl_seconds") or TUNNEL_DEFAULT_TTL_SECONDS), TUNNEL_MAX_TTL_SECONDS)
+    external_port = int(data.get("external_port") or local_port)
+    isolate = bool(data.get("isolate", False))
+    trusted_remotes = [r.strip() for r in (data.get("trusted_remotes") or []) if r.strip()]
+
+    tunnel_id = str(uuid.uuid4())
+    alias_ip = None
+    nte_context = None
+    fw_prefix = None
+    relay_stop_event = None
+    forward_target_ip = None
+    mapped_port = local_port
+
+    if isolate:
+        if not MICRO_FIREWALL_AVAILABLE:
+            raise HTTPException(status_code=400,
+                                 detail="Isolation mode requires Windows with pywin32 installed.")
+        if protocol != "TCP":
+            raise HTTPException(status_code=400, detail="Isolation mode currently only supports TCP.")
+        alias_ip = data.get("alias_ip")
+        if_index = data.get("interface_index")
+        if not alias_ip or if_index is None:
+            raise HTTPException(
+                status_code=400,
+                detail="isolate=true requires both alias_ip and interface_index (see GET /tunnel/interfaces).",
+            )
+        fw_prefix = "Sf2AiS_%s" % tunnel_id[:8]
+        try:
+            nte_context = micro_firewall.add_alias_ip(alias_ip, int(if_index))
+            micro_firewall.add_firewall_rules(fw_prefix, alias_ip, external_port, trusted_remotes)
+        except Exception as e:
+            if nte_context is not None:
+                try:
+                    micro_firewall.remove_alias_ip(nte_context)
+                except Exception:
+                    pass
+            raise HTTPException(status_code=500, detail="Isolation setup failed: %s" % str(e))
+
+        relay_stop_event = threading.Event()
+        relay_thread = threading.Thread(
+            target=micro_firewall.start_relay,
+            args=(alias_ip, external_port, local_port, trusted_remotes, relay_stop_event),
+            daemon=True,
+        )
+        relay_thread.start()
+        forward_target_ip = alias_ip
+        mapped_port = external_port
+
+    try:
+        control_url, service_type, local_ip = upnp_add_port_mapping(
+            external_port, mapped_port, protocol,
+            "Sf2AiS debug tunnel (%s)" % share["username"], ttl_seconds,
+            override_internal_ip=forward_target_ip,
+        )
+    except Exception as e:
+        if isolate:
+            relay_stop_event.set()
+            try:
+                micro_firewall.remove_firewall_rules(fw_prefix)
+            except Exception:
+                pass
+            try:
+                micro_firewall.remove_alias_ip(nte_context)
+            except Exception:
+                pass
+        raise HTTPException(status_code=502, detail="Couldn't open tunnel via UPnP: %s" % str(e))
+
+    config = load_config()
+    public_host = resolve_public_host(config) or get_public_ip_quick()
+    public_url = "http://%s:%s" % (public_host, external_port) if public_host else None
+
+    verify_result = None
+    if data.get("verify"):
+        ok, msg = verify_tunnel_reachable(public_host, external_port, protocol)
+        verify_result = {"reachable": ok, "message": msg}
+
+    with TUNNELS_LOCK:
+        TUNNELS[tunnel_id] = {
+            "id": tunnel_id, "share_id": share["id"], "local_port": local_port,
+            "external_port": external_port, "protocol": protocol,
+            "control_url": control_url, "service_type": service_type,
+            "status": "open", "opened_at": now_iso(), "public_url": public_url,
+            "verify_result": verify_result,
+            "isolate": isolate, "alias_ip": alias_ip, "trusted_remotes": trusted_remotes,
+            "nte_context": nte_context, "fw_prefix": fw_prefix,
+            "relay_stop_event": relay_stop_event,
+        }
+
+    watcher = threading.Thread(target=_tunnel_expiry_watcher, args=(tunnel_id, ttl_seconds), daemon=True)
+    watcher.start()
+
+    return JSONResponse({
+        "tunnel_id": tunnel_id,
+        "public_url": public_url,
+        "external_port": external_port,
+        "expires_in_seconds": ttl_seconds,
+        "verify_result": verify_result,
+        "isolated": isolate,
+    })
+
+
+@app.post("/tunnel/{tunnel_id}/close")
+def tunnel_close(tunnel_id: str, share: dict = Depends(share_auth)):
+    require_tunnel_enabled(share)
+    t = TUNNELS.get(tunnel_id)
+    if not t or t["share_id"] != share["id"]:
+        raise HTTPException(status_code=404, detail="Tunnel not found.")
+    _close_tunnel(tunnel_id, reason="closed by request")
+    return JSONResponse({"status": "closed"})
+
+
+@app.get("/tunnel")
+def tunnel_list(share: dict = Depends(share_auth)):
+    require_tunnel_enabled(share)
+    tunnels = [_public_tunnel_view(t) for t in TUNNELS.values() if t["share_id"] == share["id"]]
+    return JSONResponse({"tunnels": tunnels})
+
 
 # ---------------------------------------------------------------------------
 # Secure File serving (per-share) - Patched v1.0
