@@ -25,6 +25,9 @@ opt-in per share and off by default.
   to a free DuckDNS hostname whenever it changes, no separate script needed
 - A **live dashboard**: online/offline status, your current shareable link,
   DDNS status, and which logins are actively connected
+- A **desktop Electron probe app** with system tray, glassmorphism UI,
+  DuckDNS config, and Windows Task Scheduler integration for background IP
+  monitoring
 - **Multiple shares**: give different folders their own separate
   username/password pairs, added anytime from the dashboard, each with its
   own independent CLI/tunnel permissions
@@ -110,6 +113,10 @@ Not built yet — discussed as a `PyInstaller` + Inno Setup/NSIS pass for
 Windows, and `PyInstaller --windowed` + `.dmg` for macOS. For now, run it
 directly with Python as above on both.
 
+The **Sf2AiS Probe** desktop app (system tray IP monitor) IS available as a
+prebuilt Electron package — download it from the SF2AIS dashboard under
+"Desktop Probe App", or find installers in `probe-app/dist/`.
+
 ---
 
 Then open `http://localhost:8000` (or your server's address) in a browser.
@@ -139,19 +146,60 @@ Then open `http://localhost:8000` (or your server's address) in a browser.
    CLI/Tunnel toggles, and a **+ Add Share** button to create more
    username/password pairs (with their own CLI/tunnel permissions) at any time.
 
-## The IP probe
+## The IP Probe — Desktop App
 
-The IP update probe ships as a small cross-platform **Python script** — it
-works identically on Windows/macOS/Linux, you just point it at your gateway
-and schedule it:
+Sf2AiS now ships with a dedicated **Electron desktop probe app** — a native
+system-tray application that watches your public IP and keeps it updated
+on your gateway automatically.
+
+The Electron app provides:
+- **System tray icon** with real-time IP status and quick controls
+- **Glassmorphism settings UI** — configure gateway URL, probe token,
+  check interval, and startup behavior
+- **DuckDNS integration** — enter your DuckDNS subdomain + token directly
+  in the app; the probe pushes your IP to DuckDNS on every check
+- **Background operation** — runs silently in the notification area,
+  checks every 5 minutes (configurable), and auto-starts on Windows login
+- **Windows Task Scheduler** — one click creates a scheduled task that
+  launches the probe at logon and repeats the IP check every 5 minutes
+- **Direct download** — the SF2AIS web dashboard offers a "Download Desktop
+  Probe App" section with installers for Windows (.exe), macOS (.dmg), and
+  Linux (.AppImage)
+
+### Downloading from the Dashboard
+
+1. Open `http://localhost:8000/dashboard` in your browser
+2. Scroll to the **Desktop Probe App** section
+3. Click the download link for your platform
+4. Run the installer (or drag to Applications on macOS, make executable on Linux)
+5. The app will appear in your system tray — click it to open settings
+
+### Configuring the Probe
+
+In the app's settings window:
+- **Gateway URL** — your SF2AIS server address (e.g. `http://192.168.1.5:8000`
+  or your DDNS domain)
+- **Probe Token** — from the Sf2AiS dashboard setup (shown once during setup)
+- **DuckDNS Subdomain** — your free subdomain at `duckdns.org` (optional)
+- **DuckDNS Token** — your DuckDNS token (optional)
+- **Check interval** — how often to check (default: 5 minutes)
+- **Start with Windows** — also creates a Windows Task Scheduler entry
+
+Click **🌐 Open duckdns.org** to register a free DuckDNS hostname if you
+don't have one yet.
+
+### Using the Python Script (legacy)
+
+The original cross-platform Python script (`probe.py`) is still available
+as a lightweight alternative — works on Windows/macOS/Linux with Python 3
+installed, you just point it at your gateway and schedule it:
 
 - **Windows** — Task Scheduler, "repeat every 5 minutes"
-- **macOS / Linux** — a `cron` entry (`*/5 * * * * python3 /path/to/probe.py`)
+- **macOS / Linux** — `cron` entry (`*/5 * * * * python3 /path/to/probe.py`)
 
-Full instructions are generated for you on the dashboard once you choose the
-"current IP" option. If you've also set a DuckDNS domain/token on the
-dashboard, every probe update pushes straight through to DuckDNS too — no
-separate DDNS client needed.
+Download it from the dashboard's **Setup Complete** page, or from
+`/probe/download?token=YOUR_TOKEN`. Full instructions are at
+`/probe/setup-guide`.
 
 ## API reference (for AI assistants / scripting)
 

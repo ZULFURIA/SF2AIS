@@ -638,6 +638,21 @@ def dashboard(admin: str = Depends(admin_auth)):
             </form>
         </div>
 
+        <h2 style="margin-top:30px;">Desktop Probe App</h2>
+        <div class="card-sm" style="margin-top:12px;">
+            <div class="label">Electron Probe</div>
+            <p class="sub" style="margin-top:4px;">Download and run the desktop app for automatic IP monitoring,
+            system tray control, and scheduled background checks.</p>
+            <div class="grid-2" style="margin-top:14px;">
+                <a class="btn secondary" href="/probe/desktop-app/windows">Download for Windows (.exe)</a>
+                <a class="btn secondary" href="/probe/desktop-app/macos">Download for macOS (.dmg)</a>
+            </div>
+            <div class="grid-2" style="margin-top:10px;">
+                <a class="btn secondary" href="/probe/desktop-app/linux">Download for Linux (.AppImage)</a>
+                <a class="btn secondary" href="/probe/setup-guide">Setup instructions</a>
+            </div>
+        </div>
+
         <h2 style="margin-top:30px;">Shares</h2>
         <table>
             <thead><tr><th>Folder</th><th>Username</th><th>Status</th><th>Last seen</th><th>CLI</th><th>Tunnel</th><th></th></tr></thead>
@@ -916,6 +931,50 @@ def probe_setup_guide():
         <a class="btn secondary" style="margin-top:20px;" href="/dashboard">Back to dashboard</a>
     """
     return page("Probe Setup", body)
+
+
+@app.get("/probe/desktop-app/{platform}")
+def probe_desktop_app(platform: str, token: str = "", admin: str = Depends(admin_auth)):
+    """Download the packaged desktop Electron probe app for the given platform."""
+    probe_dir = Path(__file__).parent / "probe-app"
+    dist_dir = probe_dir / "dist"
+
+    platform_map = {
+        "windows": {"file": "sf2ais-probe-portable.exe", "content_type": "application/x-msdownload",
+                     "alt_files": ["Sf2AiS Probe Setup 1.0.0.exe"]},
+        "macos": {"file": "sf2ais-probe-portable.exe", "content_type": "application/octet-stream",
+                   "alt_files": ["sf2ais-probe.dmg"]},
+        "linux": {"file": "sf2ais-probe-portable.exe", "content_type": "application/appimage",
+                   "alt_files": ["sf2ais-probe.AppImage"]},
+    }
+
+    info = platform_map.get(platform.lower())
+    if not info:
+        raise HTTPException(status_code=404, detail="Unsupported platform. Use 'windows', 'macos', or 'linux'.")
+
+    # Try primary file, then fall back to alternative names
+    download_path = dist_dir / info["file"]
+    if not download_path.exists():
+        for alt in info.get("alt_files", []):
+            alt_path = dist_dir / alt
+            if alt_path.exists():
+                download_path = alt_path
+                break
+
+    if not download_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Desktop app for %s is not yet built on the server. "
+                   "You can still use the Python script: /probe/download?token=%s&platform=%s" % (platform, token, platform),
+        )
+
+    content = download_path.read_bytes()
+    return Response(
+        content=content,
+        media_type=info["content_type"],
+        headers={"Content-Disposition": "attachment; filename=%s" % info["file"]},
+    )
+
 
 # ---------------------------------------------------------------------------
 # CLI execution (opt-in, per-share) - lets an AI assistant run shell / PowerShell
