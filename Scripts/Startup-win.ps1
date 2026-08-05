@@ -1,25 +1,29 @@
 <#
 .SYNOPSIS
     Creates a Windows Task Scheduler entry for the Sf2AiS Probe desktop app.
+
 .DESCRIPTION
     This script creates a scheduled task that launches the Sf2AiS Probe Electron app
-    at Windows logon and repeats every 5 minutes (matching the documented probe schedule),
-    so the IP updater runs automatically in the background.
-    The task is configured to run with the highest privileges and to restart
-    on failure.
+    at Windows logon and repeats every 5 minutes, so the IP updater runs automatically
+    in the background.
+    The task is configured to run with the highest privileges and to restart on failure.
+
 .PARAMETER AppPath
-    Full path to the Electron executable or packaged app.
+    Full path to the packaged Electron executable (e.g. "C:\Program Files\Sf2AiS Probe\sf2ais-probe.exe")
+
 .PARAMETER AppDir
-    Working directory for the app (used when launching from development).
+    Working directory for the app (used when launching from development with electron.exe)
+
 .PARAMETER ConfigDir
-    Path to the probe's config/log directory (e.g. %USERPROFILE%\.sf2ais-probe).
+    Path to the probe's config/log directory (default: %USERPROFILE%\.sf2ais-probe)
+
 .EXAMPLE
-    powershell -ExecutionPolicy Bypass -NoProfile -File "create-task.ps1" -AppPath "C:\Program Files\sf2ais-probe\sf2ais-probe.exe"
+    powershell -ExecutionPolicy Bypass -NoProfile -File "Startup-win.ps1" -AppPath "C:\Program Files\Sf2AiS Probe\sf2ais-probe.exe"
 #>
 
 param(
-    [Parameter(Mandatory=$true)]
-    [string]$AppPath,
+    [Parameter(Mandatory=$false)]
+    [string]$AppPath = "$env:LOCALAPPDATA\Sf2AiS-Probe\sf2ais-probe.exe",
 
     [string]$AppDir = "",
 
@@ -36,8 +40,7 @@ if (-not (Test-Path $AppPath)) {
     exit 1
 }
 
-# Build the action — if AppDir is provided and the appPath doesn't look like a packaged exe,
-# use "executable, workingdir" format for development mode
+# Build the action
 if ($AppDir -and -not $AppPath.EndsWith(".exe")) {
     # Development mode: Electron needs the app directory as an argument
     $action = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c `"$AppPath`" `"$AppDir`""
@@ -46,9 +49,7 @@ if ($AppDir -and -not $AppPath.EndsWith(".exe")) {
     $action = New-ScheduledTaskAction -Execute $AppPath -WorkingDirectory (Split-Path $AppPath)
 }
 
-# Two triggers:
-# 1. At log on (so it starts when Windows starts)
-# 2. Every 5 minutes (matching the documented probe check schedule)
+# Two triggers: at logon + repeat every 5 minutes
 $logonTrigger = New-ScheduledTaskTrigger -AtLogOn
 $scheduleTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration (New-TimeSpan -Days 365)
 
@@ -58,8 +59,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -DontStopIfGoingOnBatteries `
     -StartWhenAvailable `
     -RestartCount 3 `
-    -RestartInterval (New-TimeSpan -Minutes 1) `
-    -MultipleTasks = $true
+    -RestartInterval (New-TimeSpan -Minutes 1)
 
 $principal = New-ScheduledTaskPrincipal `
     -UserId $env:USERNAME `

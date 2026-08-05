@@ -375,7 +375,7 @@ ipcMain.handle('create-scheduled-task', async () => {
   if (process.platform !== 'win32') {
     return { ok: false, error: 'Task Scheduler is only available on Windows.' };
   }
-  const psPath = path.join(__dirname, 'scripts', 'create-task.ps1');
+  const psPath = path.join(__dirname, 'scripts', 'Startup-win.ps1');
   if (!fs.existsSync(psPath)) {
     return { ok: false, error: 'PowerShell script not found: ' + psPath };
   }

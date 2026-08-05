@@ -201,6 +201,77 @@ Download it from the dashboard's **Setup Complete** page, or from
 `/probe/download?token=YOUR_TOKEN`. Full instructions are at
 `/probe/setup-guide`.
 
+## Operating Guide — How Tos
+
+### How to make the probe start automatically at boot
+
+**Windows:**
+1. Download the Windows installer from the dashboard (`/probe/desktop-app/windows`).
+2. Install the app, then open it. In settings, check **"Start with Windows"**.
+3. Click **Save Settings** — this creates a Windows Task Scheduler entry
+   (`Scripts/Startup-win.ps1`) that runs the probe at logon and repeats the
+   IP check every 5 minutes.
+4. Or manually: `powershell -ExecutionPolicy Bypass -NoProfile -File "Scripts\Startup-win.ps1" -AppPath "C:\Program Files\Sf2AiS Probe\sf2ais-probe.exe"`
+
+**Linux:**
+1. Install the AppImage from the dashboard (`/probe/desktop-app/linux`).
+2. Make it executable: `chmod +x sf2ais-probe.AppImage`
+3. Run the startup installer: `./Scripts/Startup-Linux --app-dir /path/to/probe`
+   This creates a cron job that runs at reboot. Use `--user-startup` for
+   a systemd user service instead.
+4. Or manually create a cron entry: `(crontab -e)` → add
+   `@reboot /path/to/sf2ais-probe.AppImage`
+
+**macOS:**
+1. Download the `.dmg` from the dashboard (`/probe/desktop-app/macos`).
+2. Drag "Sf2AiS Probe" to Applications and launch it.
+3. Run the startup installer: `./Scripts/Startup-Mac --app-path /Applications/Sf2AiS\ Probe.app`
+   This creates a LaunchAgent plist that starts at login and restarts every 5 min.
+4. Or manually: add the app to System Preferences → Users & Groups → Login Items.
+
+### How to configure DuckDNS
+
+**Via the Electron probe app:**
+1. Open the probe app window (click the tray icon).
+2. Enter your DuckDNS **Subdomain** (e.g. `wayne-debug`) and **Token**.
+3. Click **🌐 Open duckdns.org** if you need to register a new subdomain.
+4. Click **Save Settings**. The probe will push your IP to DuckDNS on every check.
+
+**Via the web dashboard:**
+1. Open `http://localhost:8000/dashboard`.
+2. In the DDNS section, enter your subdomain and token.
+3. Click **Save**. Future probe checks will report to DuckDNS.
+
+### How to verify the probe is working
+
+1. In the app window, check the status panel — it shows `lastCheck`,
+   `lastPublicIp`, and `lastReportOk`.
+2. Click **Check Now** to trigger an immediate IP check.
+3. Watch the log box at the bottom for status messages.
+4. On the dashboard, the "probe online" badge turns green when the probe
+   reports successfully within the last 15 minutes.
+
+### How to remove the probe from auto-start
+
+**Windows:** Delete the "Sf2AiS Probe" task in Task Scheduler (or run:
+`schtasks /delete /tn "Sf2AiS Probe" /f`)
+
+**Linux:** Run `./Scripts/Startup-Linux --remove` (or remove the cron entry)
+
+**macOS:** Run `./Scripts/Startup-Mac --remove` (or delete
+`~/Library/LaunchAgents/com.sf2ais.probe.plist`)
+
+### How to build the probe app from source
+
+```bash
+cd probe-app
+npm install --allow-scripts
+npx electron .          # run in development
+npx electron-builder --win --x64   # build Windows installer
+npx electron-builder --mac --x64   # build macOS .dmg
+npx electron-builder --linux --x64  # build Linux AppImage
+```
+
 ## API reference (for AI assistants / scripting)
 
 All endpoints below require the share's Basic Auth credentials and are only
@@ -223,6 +294,8 @@ available if the relevant feature is turned on for that share.
 **Dashboard** (admin credentials, not share credentials):
 - `POST /dashboard/ddns` — set DuckDNS `domain`/`token`
 - `POST /dashboard/shares/{id}/toggle-cli`, `.../toggle-tunnel` — flip per-share permissions
+- `GET /probe/desktop-app/{platform}` — download the packaged Electron probe app (requires admin auth). Platforms: `windows`, `macos`, `linux`
+- `GET /probe/download?token=...` — download the legacy Python probe script
 
 ## Security notes
 
