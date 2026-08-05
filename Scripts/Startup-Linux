@@ -1,0 +1,126 @@
+#!/bin/bash
+# Startup-Linux — Creates a cron entry for the Sf2AiS Probe desktop app (Linux)
+#
+# This script installs a persistent cron job that launches the Sf2AiS Probe
+# Electron app at system startup (via @reboot) and also provides a user-level
+# systemd service as an alternative for auto-start.
+#
+# Prerequisites:
+#   - The Sf2AiS Probe app should be installed at $APP_DIR (or override)
+#   - cron must be running (typically true on most Linux distros)
+#
+# Usage:
+#   ./Startup-Linux                      # Interactive: asks for confirmation
+#   ./Startup-Linux --app-dir /opt/sf2ais-probe   # Custom install path
+#   ./Startup-Linux --app-dir /opt/sf2ais-probe --user-startup  # systemd --user instead of cron
+#   ./Startup-Linux --remove             # Remove the startup entry
+#
+
+set -euo pipefail
+
+# --- Defaults ---
+APP_DIR="${APP_DIR:-/opt/sf2ais-probe}"
+APP_NAME="sf2ais-probe"
+CRON_TAG="sf2ais-probe"
+USER_ID=$(id -un)
+USE_SYSTEMD_USER=false
+REMOVE=false
+
+# --- Parse arguments ---
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --remove)
+            REMOVE=true
+            shift
+            ;;
+        --user-startup)
+            USE_SYSTEMD_USER=true
+            shift
+            ;;
+        --app-dir)
+            APP_DIR="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            echo "Usage: $0 [--app-dir /path/to/probe] [--user-startup] [--remove]"
+            exit 1
+            ;;
+    esac
+done
+
+APPURL="$APP_DIR/$APP_NAME.AppImage"
+
+if [ ! -f "$APPURL" ]; then
+    echo "ERROR: Probe app not found at $APPURL"
+    echo "Install the AppImage first or specify --app-dir."
+    exit 1
+fi
+
+# --- Cron-based startup ---
+add_cron_entry() {
+    echo "Installing cron entry for Sf2AiS Probe..."
+    CRON_LINE="@reboot $APPURL >/dev/null 2>&1 # $CRON_TAG"
+
+    # Remove any existing entry
+    (crontab -l 2>/dev/null | grep -v "$CRON_TAG"; echo "$CRON_LINE") | crontab -
+    echo "OK: Cron entry installed. The probe will start at system reboot."
+    echo "   App path: $APPURL"
+}
+
+# --- systemd --user startup ---
+add_systemd_user_entry() {
+    SERVICE_FILE="$HOME/.config/systemd/user/sf2ais-probe.service"
+    mkdir -p "$(dirname "$SERVICE_FILE")"
+    cat > "$SERVICE_FILE" <<EOF
+[Unit]
+Description=Sf2AiS Probe (IP Monitor)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=$APPURL
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
+EOF
+    systemctl --user daemon-reload
+    systemctl --user enable sf2ais-probe.service
+    echo "OK: systemd user service installed and enabled at $SERVICE_FILE"
+    echo "   Start with: systemctl --user start sf2ais-probe"
+    echo "   Logs:       journalctl --user -u sf2ais-probe -f"
+}
+
+# --- Remove ---
+remove_entry() {
+    if [ "$USE_SYSTEMD_USER" = true ]; then
+        SERVICE_FILE="$HOME/.config/systemd/user/sf2ais-probe.service"
+        if [ -f "$SERVICE_FILE" ]; then
+            systemctl --user stop sf2ais-probe.service 2>/dev/null || true
+            systemctl --user disable sf2ais-probe.service 2>/dev/null || true
+            rm -f "$SERVICE_FILE"
+            systemctl --user daemon-reload
+            echo "OK: Removed systemd user service."
+        else
+            echo "No systemd service found."
+        fi
+    else
+        (crontab -l 2>/dev/null | grep -v "$CRON_TAG") | crontab - || true
+        echo "OK: Removed cron entry."
+    fi
+}
+
+if [ "$REMOVE" = true ]; then
+    remove_entry
+    exit 0
+fi
+
+if [ "$USE_SYSTEMD_USER" = true ]; then
+    add_systemd_user_entry
+else
+    add_cron_entry
+fi
