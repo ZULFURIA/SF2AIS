@@ -52,28 +52,10 @@ PROBE_ONLINE_WINDOW_SECONDS = 15 * 60
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
-def _resolve_secrets(obj):
-    """Replace ${ENV_VAR} placeholders with environment values.
-
-    Credentials (probe token, DDNS token) are stored as ${SF2AIS_*} placeholders
-    in data/config.json so no secret is ever committed. They resolve at load time
-    from the environment, falling back to the literal value if no env var is set
-    (so a plaintext value still works for local dev).
-    """
-    if isinstance(obj, dict):
-        return {k: _resolve_secrets(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [_resolve_secrets(v) for v in obj]
-    if isinstance(obj, str) and obj.startswith("${") and obj.endswith("}"):
-        name = obj[2:-1]
-        return os.environ.get(name, obj)
-    return obj
-
 def load_config():
     if CONFIG_PATH.exists():
         try:
-            raw = json.loads(CONFIG_PATH.read_text())
-            return _resolve_secrets(raw)
+            return json.loads(CONFIG_PATH.read_text())
         except Exception:
             return None
     return None
@@ -662,11 +644,11 @@ def dashboard(admin: str = Depends(admin_auth)):
             <p class="sub" style="margin-top:4px;">Download and run the desktop app for automatic IP monitoring,
             system tray control, and scheduled background checks.</p>
             <div class="grid-2" style="margin-top:14px;">
-                <a class="btn secondary" href="/probe/desktop-app/windows">Download for Windows (.zip)</a>
-                <a class="btn secondary" href="/probe/desktop-app/macos">Download for macOS (.zip)</a>
+                <a class="btn secondary" href="/probe/desktop-app/windows">Download for Windows (.exe)</a>
+                <a class="btn secondary" href="/probe/desktop-app/macos">Download for macOS (.dmg)</a>
             </div>
             <div class="grid-2" style="margin-top:10px;">
-                <a class="btn secondary" href="/probe/desktop-app/linux">Download for Linux (.zip)</a>
+                <a class="btn secondary" href="/probe/desktop-app/linux">Download for Linux (.AppImage)</a>
                 <a class="btn secondary" href="/probe/setup-guide">Setup instructions</a>
             </div>
         </div>
@@ -953,44 +935,44 @@ def probe_setup_guide():
 
 @app.get("/probe/desktop-app/{platform}")
 def probe_desktop_app(platform: str, token: str = "", admin: str = Depends(admin_auth)):
-    """Download the packaged desktop Electron probe app for the given platform.
-
-    The app is shipped as a ZIP of the whole `probe-app/dist/` folder so the
-    executable and all of its sibling dependencies (DLLs, locales, swiftshader,
-    etc.) stay co-located. Sending the lone .exe loses those deps and the app
-    fails to launch. If dist/ is empty we point the user at the Python script.
-    """
+    """Download the packaged desktop Electron probe app for the given platform."""
     probe_dir = Path(__file__).parent / "probe-app"
     dist_dir = probe_dir / "dist"
 
     platform_map = {
-        "windows": "sf2ais-probe-windows.zip",
-        "macos": "sf2ais-probe-macos.zip",
-        "linux": "sf2ais-probe-linux.zip",
+        "windows": {"file": "sf2ais-probe-portable.exe", "content_type": "application/x-msdownload",
+                     "alt_files": ["Sf2AiS Probe Setup 1.0.0.exe"]},
+        "macos": {"file": "sf2ais-probe-portable.exe", "content_type": "application/octet-stream",
+                   "alt_files": ["sf2ais-probe.dmg"]},
+        "linux": {"file": "sf2ais-probe-portable.exe", "content_type": "application/appimage",
+                   "alt_files": ["sf2ais-probe.AppImage"]},
     }
-    archive_name = platform_map.get(platform.lower())
-    if not archive_name:
+
+    info = platform_map.get(platform.lower())
+    if not info:
         raise HTTPException(status_code=404, detail="Unsupported platform. Use 'windows', 'macos', or 'linux'.")
 
-    if not dist_dir.exists() or not any(dist_dir.iterdir()):
+    # Try primary file, then fall back to alternative names
+    download_path = dist_dir / info["file"]
+    if not download_path.exists():
+        for alt in info.get("alt_files", []):
+            alt_path = dist_dir / alt
+            if alt_path.exists():
+                download_path = alt_path
+                break
+
+    if not download_path.exists():
         raise HTTPException(
             status_code=404,
-            detail="Desktop app is not yet built on the server. Run `npm run build` in probe-app. "
-                   "You can still use the Python script: /probe/download?token=%s&platform=%s" % (token, platform),
+            detail="Desktop app for %s is not yet built on the server. "
+                   "You can still use the Python script: /probe/download?token=%s&platform=%s" % (platform, token, platform),
         )
 
-    import io as _io
-    import zipfile as _zipfile
-    buf = _io.BytesIO()
-    with _zipfile.ZipFile(buf, "w", _zipfile.ZIP_DEFLATED) as zf:
-        for entry in sorted(dist_dir.rglob("*")):
-            if entry.is_file():
-                zf.write(entry, entry.relative_to(dist_dir))
-    buf.seek(0)
+    content = download_path.read_bytes()
     return Response(
-        content=buf.getvalue(),
-        media_type="application/zip",
-        headers={"Content-Disposition": "attachment; filename=%s" % archive_name},
+        content=content,
+        media_type=info["content_type"],
+        headers={"Content-Disposition": "attachment; filename=%s" % info["file"]},
     )
 
 

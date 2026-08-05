@@ -17,16 +17,10 @@ tray and can optionally update DuckDNS hostnames.
 2. Open `http://localhost:8000/dashboard` and log in with your admin credentials.
 3. Scroll to the **Desktop Probe App** section.
 4. Click the download link for your platform:
-   - **Windows**: Download `.zip` (self-contained — the `.exe` plus all its
-     dependencies are bundled, so just extract and run)
-   - **macOS**: Download `.zip`
-   - **Linux**: Download `.zip`
-5. Extract the ZIP and run the app. It will appear in your system tray.
-
-> Why a ZIP and not a bare `.exe`? The Electron executable needs its sibling
-> DLLs/locales (in `dist/`) to run. Sending only the `.exe` made the app fail
-> to launch. The dashboard now serves the whole `dist/` folder as a ZIP so the
-> executable and its dependencies stay co-located.
+   - **Windows**: Download `.exe` (portable or installer)
+   - **macOS**: Download `.dmg`
+   - **Linux**: Download `.AppImage`
+5. Install/run the app. It will appear in your system tray.
 
 ### Option 2: Build from source
 
@@ -69,16 +63,13 @@ don't have one yet.
 ## Windows Task Scheduler Integration
 
 When you check **"Start with Windows"** and click **Save Settings**, the app
-runs a PowerShell script (`scripts/Startup-win.ps1`) that:
+automatically runs a PowerShell script (`scripts/create-task.ps1`) that:
 
-- **Self-elevates** with a UAC prompt if not already running as administrator
-  (registering a scheduled task requires admin rights — this was the cause of
-  the previous "Access is denied" failure)
-- Locates the probe executable automatically (searches the common install and
-  build locations) if `-AppPath` isn't supplied
-- Creates (or cleanly replaces) a Windows Task Scheduler entry named
-  **"Sf2AiS Probe"**
-- Sets two triggers: **At log on** and **Every 5 minutes**
+- Creates a Windows Task Scheduler entry named **"Sf2AiS Probe"**
+- Sets two triggers:
+  1. **At log on** — launches the probe when you sign in
+  2. **Every 5 minutes** — keeps the IP check running (matches the
+     documented probe schedule)
 - Configures the task to run with highest privileges and restart on failure
 
 This ensures the IP monitor survives reboots and runs on the documented
@@ -87,8 +78,7 @@ This ensures the IP monitor survives reboots and runs on the documented
 ### Manual scheduler creation
 
 ```powershell
-# Run from an elevated PowerShell, or let the script prompt for elevation
-powershell -ExecutionPolicy Bypass -NoProfile -File "scripts/Startup-win.ps1"
+powershell -ExecutionPolicy Bypass -NoProfile -File "create-task.ps1" -AppPath "C:\Path\To\Sf2AiS Probe.exe"
 ```
 
 ## System Tray Controls
@@ -97,10 +87,6 @@ Right-click the tray icon for quick actions:
 - **Start/Stop Probe** — toggle the background check loop
 - **Check Now** — trigger an immediate IP check
 - **Open Dashboard** — open your Sf2AiS web dashboard in browser
-- **Quit** — fully exits the app. Closing the window (or using the tray to
-  hide it) keeps the app running in the background; **Quit** from the tray menu
-  is what actually terminates the process. This was fixed so Quit reliably
-  closes the app even when it is docked in the notification area.
 - **Open Settings** — open the Electron app window
 - **Quit** — stop the probe and exit
 
@@ -133,4 +119,4 @@ probe token must match what was shown during Sf2AiS setup.
 | App source | `probe-app/` |
 | Build output | `probe-app/dist/` |
 | Source code | `probe-app/main.js`, `probe-app/preload.js`, `probe-app/renderer/` |
-| Scheduler script | `Scripts/Startup-win.ps1` (root) and `probe-app/scripts/Startup-win.ps1` |
+| Scheduler script | `probe-app/scripts/create-task.ps1` |
