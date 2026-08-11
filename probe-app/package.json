@@ -1,0 +1,60 @@
+{
+  "name": "sf2ais-probe",
+  "version": "1.0.0",
+  "description": "Sf2AiS IP Probe — keeps your shareable link alive",
+  "main": "main.js",
+  "author": "Wayne Thomas Dougall (ZULFURIA)",
+  "license": "Sf2AiS-Noncommercial-1.0",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64",
+    "build:dir": "electron-builder --win --x64 --dir",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.0"
+  },
+  "build": {
+    "appId": "com.zulfuria.sf2ais-probe",
+    "productName": "Sf2AiS Probe",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "scripts/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Sf2AiS Probe"
+    },
+    "portable": {
+      "artifactName": "sf2ais-probe-portable.exe"
+    }
+  }
+}
