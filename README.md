@@ -56,6 +56,34 @@ Each share can independently turn on:
 
 ## Running it
 
+### Quick start (recommended)
+
+Use the bundled startup helper for your platform — it starts the server,
+opens the dashboard, and registers the desktop probe task:
+
+```powershell
+# Windows
+pwsh -ExecutionPolicy Bypass -File Scripts\Startup.ps1
+```
+```bash
+# macOS / Linux
+PORT=8000 ./Scripts/start.sh
+```
+
+### Configuration & secrets
+
+Runtime secrets are **never committed**. `data/config.json` contains
+`${SF2AIS_PROBE_TOKEN}` / `${SF2AIS_DDNS_TOKEN}` placeholders that resolve from
+the environment. Copy `.env.example` to `.env` and fill in your values:
+
+```bash
+cp .env.example .env
+# edit .env: SF2AIS_PROBE_TOKEN=...  SF2AIS_DDNS_SUBDOMAIN=...  SF2AIS_DDNS_TOKEN=...
+```
+
+`data/config.json` is gitignored — the committed `data/config.example.json`
+shows the structure without secrets.
+
 ### With Python
 ```bash
 pip install -r requirements.txt

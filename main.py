@@ -656,6 +656,21 @@ def dashboard(admin: str = Depends(admin_auth)):
             </form>
         </div>
 
+        <h2 style="margin-top:30px;">Desktop Probe App</h2>
+        <div class="card-sm" style="margin-top:12px;">
+            <div class="label">Electron Probe</div>
+            <p class="sub" style="margin-top:4px;">Download and run the desktop app for automatic IP monitoring,
+            system tray control, and scheduled background checks.</p>
+            <div class="grid-2" style="margin-top:14px;">
+                <a class="btn secondary" href="/probe/desktop-app/windows">Download for Windows (.zip)</a>
+                <a class="btn secondary" href="/probe/desktop-app/macos">Download for macOS (.zip)</a>
+            </div>
+            <div class="grid-2" style="margin-top:10px;">
+                <a class="btn secondary" href="/probe/desktop-app/linux">Download for Linux (.zip)</a>
+                <a class="btn secondary" href="/probe/setup-guide">Setup instructions</a>
+            </div>
+        </div>
+
         <h2 style="margin-top:30px;">Shares</h2>
         <table>
             <thead><tr><th>Folder</th><th>Username</th><th>Status</th><th>Last seen</th><th>CLI</th><th>Tunnel</th><th></th></tr></thead>
@@ -934,6 +949,50 @@ def probe_setup_guide():
         <a class="btn secondary" style="margin-top:20px;" href="/dashboard">Back to dashboard</a>
     """
     return page("Probe Setup", body)
+
+
+@app.get("/probe/desktop-app/{platform}")
+def probe_desktop_app(platform: str, token: str = "", admin: str = Depends(admin_auth)):
+    """Download the packaged desktop Electron probe app for the given platform.
+
+    The app is shipped as a ZIP of the whole `probe-app/dist/` folder so the
+    executable and all of its sibling dependencies (DLLs, locales, swiftshader,
+    etc.) stay co-located. Sending the lone .exe loses those deps and the app
+    fails to launch. If dist/ is empty we point the user at the Python script.
+    """
+    probe_dir = Path(__file__).parent / "probe-app"
+    dist_dir = probe_dir / "dist"
+
+    platform_map = {
+        "windows": "sf2ais-probe-windows.zip",
+        "macos": "sf2ais-probe-macos.zip",
+        "linux": "sf2ais-probe-linux.zip",
+    }
+    archive_name = platform_map.get(platform.lower())
+    if not archive_name:
+        raise HTTPException(status_code=404, detail="Unsupported platform. Use 'windows', 'macos', or 'linux'.")
+
+    if not dist_dir.exists() or not any(dist_dir.iterdir()):
+        raise HTTPException(
+            status_code=404,
+            detail="Desktop app is not yet built on the server. Run `npm run build` in probe-app. "
+                   "You can still use the Python script: /probe/download?token=%s&platform=%s" % (token, platform),
+        )
+
+    import io as _io
+    import zipfile as _zipfile
+    buf = _io.BytesIO()
+    with _zipfile.ZipFile(buf, "w", _zipfile.ZIP_DEFLATED) as zf:
+        for entry in sorted(dist_dir.rglob("*")):
+            if entry.is_file():
+                zf.write(entry, entry.relative_to(dist_dir))
+    buf.seek(0)
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=%s" % archive_name},
+    )
+
 
 # ---------------------------------------------------------------------------
 # CLI execution (opt-in, per-share) - lets an AI assistant run shell / PowerShell

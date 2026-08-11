@@ -243,7 +243,17 @@ function updateTrayMenu() {
     { type: 'separator' },
     {
       label: 'Quit',
-      click: () => { stopLoop(); app.quit(); },
+      click: () => {
+        stopLoop();
+        // Force a real exit. On Windows, when the app is "docked" in the
+        // notification area the window-close handler hides the window instead
+        // of closing it, so a plain app.quit() can leave the process running.
+        // Destroy the window + tray reference first, then quit hard.
+        if (win && !win.isDestroyed()) { try { win.destroy(); } catch {} }
+        win = null;
+        if (tray) { try { tray.destroy(); } catch {} tray = null; }
+        app.exit(0);
+      },
     },
   ];
   tray.setContextMenu(Menu.buildFromTemplate(template));
@@ -415,5 +425,12 @@ app.on('window-all-closed', () => {
 app.on('activate', () => showWindow());
 
 app.on('before-quit', () => {
+  stopLoop();
+});
+
+// Guarantee the process actually terminates even if a window is still alive
+// (e.g. the tray is the only visible surface). Without this, Electron can
+// keep running after Quit when minimised-to-tray is enabled.
+app.on('will-quit', () => {
   stopLoop();
 });
