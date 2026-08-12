@@ -1,0 +1,17 @@
+# Runtime config + secrets — never commit real credentials
+data/config.json
+.env
+.env.*
+!.env.example
+
+# Build / dependency artifacts
+probe-app/node_modules/
+probe-app/dist/
+probe-app/.npmrc
+probe-app/package-lock.json
+__pycache__/
+*.pyc
+
+# Python caches / virtualenvs
+venv/
+.venv/

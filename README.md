@@ -1,10 +1,18 @@
 # Sf2AiS (aka: AI-Gateway-FTP) — Secure Files to AI Server 🤖📂
 
 A password-protected, self-hosted bridge that lets web-browsing AI chatbots
-(ChatGPT, Claude, Gemini, Copilot, etc.) securely browse, read, and download
-files from your own computer or home server — no API keys or MCP support
-required.
-also can be used to give a workspace to another users to work on .like an ftp server. but shares over http. all ai companys all going mcp routes and forgot there is a mich simpler way to do this. might not be as secure as an mcp. but this is for a qiuck 1 to 2 day work/share session. not ment to be always running. though it is as secure as i could ultimatly make it with my knowlidge base. havent tested any connection methods as yet as i am busy fixing the static ip and probe . should be fixed when i work on it this weekend again.
+(ChatGPT, Claude, Gemini, Copilot, etc.) — or another person — securely
+browse, read, and download files on your own computer or home server, run
+debugging/test commands, and even temporarily view a running dev server.
+No API keys or MCP support required on the AI's side.
+
+Also works as a plain workspace-sharing tool between people — like an FTP
+server that happens to share over HTTP. All the AI companies went the MCP
+route and forgot there's a much simpler way to do this for a quick session.
+Not as locked-down as a proper MCP integration, but built for a focused
+hours-to-a-few-days work/debug session — not meant to run 24/7 as
+production infrastructure. Every capability beyond plain file browsing is
+opt-in per share and off by default.
 
 ## What you get
 
@@ -13,18 +21,79 @@ also can be used to give a workspace to another users to work on .like an ftp se
   number, special character)
 - Support for a **custom domain**, **dynamic DNS**, a **static IP**, or your
   **current IP with an auto-updating probe** (works on Windows, macOS, Linux)
+- A built-in **DuckDNS updater** — the probe pushes your current IP straight
+  to a free DuckDNS hostname whenever it changes, no separate script needed
 - A **live dashboard**: online/offline status, your current shareable link,
-  and which logins are actively connected
+  DDNS status, and which logins are actively connected
+- A **desktop Electron probe app** with system tray, glassmorphism UI,
+  DuckDNS config, and Windows Task Scheduler integration for background IP
+  monitoring
 - **Multiple shares**: give different folders their own separate
-  username/password pairs, added anytime from the dashboard
+  username/password pairs, added anytime from the dashboard, each with its
+  own independent CLI/tunnel permissions
+
+### Per-share optional features
+
+Each share can independently turn on:
+
+- **CLI execution** — run `bash`, `powershell`, or `cmd` commands scoped to
+  that share's folder, for actual debugging/testing rather than just reading
+  files. Async job model (`POST /cli/jobs` → poll `GET /cli/jobs/{id}`), so
+  long test runs don't block on one HTTP request. Hard runtime cap, output
+  truncation, sandboxed to the share's folder the same way file downloads are.
+- **Temporary debug tunnels** — briefly expose a local dev server (e.g. a
+  Vite/webpack dev server) to the public internet via your router's UPnP, so
+  an AI or a reviewer can actually see what was built. Auto-expires (30 min
+  default, 2 hour hard cap); can be closed early. Optional `verify: true`
+  does a reachability check using whichever public address source you've
+  already configured (domain/static/DDNS/probe), instead of guessing.
+- **Isolation mode (Windows only, for now)** — instead of forwarding your
+  router's port straight to your real machine, a tunnel can bind a throwaway
+  `/32` alias IP, scope Windows Firewall rules to that alias + port + an
+  explicit remote allowlist, and relay bytes to your dev server over
+  loopback. The rest of the machine stays invisible even to other devices on
+  your own LAN. All native (`ctypes` IP Helper API + `pywin32` COM firewall
+  calls) — no `.ps1` scripts, no shelling out to `netsh`. Live-tested,
+  round-trip validated (alias IP + firewall rules added, verified, and torn
+  down cleanly).
 
 ## Running it
+
+### Quick start (recommended)
+
+Use the bundled startup helper for your platform — it starts the server,
+opens the dashboard, and registers the desktop probe task:
+
+```powershell
+# Windows
+pwsh -ExecutionPolicy Bypass -File Scripts\Startup.ps1
+```
+```bash
+# macOS / Linux
+PORT=8000 ./Scripts/start.sh
+```
+
+### Configuration & secrets
+
+Runtime secrets are **never committed**. `data/config.json` contains
+`${SF2AIS_PROBE_TOKEN}` / `${SF2AIS_DDNS_TOKEN}` placeholders that resolve from
+the environment. Copy `.env.example` to `.env` and fill in your values:
+
+```bash
+cp .env.example .env
+# edit .env: SF2AIS_PROBE_TOKEN=...  SF2AIS_DDNS_SUBDOMAIN=...  SF2AIS_DDNS_TOKEN=...
+```
+
+`data/config.json` is gitignored — the committed `data/config.example.json`
+shows the structure without secrets.
 
 ### With Python
 ```bash
 pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
+On Windows, also `pip install pywin32` if you want isolation mode available
+(everything else works without it — isolation just reports unsupported).
 
 ### With Docker
 ```bash
@@ -32,7 +101,51 @@ docker-compose up -d
 ```
 If you plan to share folders that live elsewhere on your host machine, add a
 volume line for each one in `docker-compose.yml` before starting the wizard
-(see the comments in that file).
+(see the comments in that file). Note: CLI execution, tunnels, and isolation
+mode all need real access to the host — they lose capability (or don't work
+at all) once containerized, since they're built to reach outside the
+sandbox by design. File-only sharing works fine in Docker; treat the rest as
+a native-install feature for now.
+
+### Linux (tarball + systemd) — no distro package manager needed
+
+Works identically across Debian/Ubuntu/Mint/KDE neon/Kali, Arch, and
+Fedora/RHEL/CentOS/SUSE — one build, no `.deb`/`.rpm`/`PKGBUILD` juggling,
+since there's nothing distro-specific for a dependency manager to resolve
+here in the first place.
+
+```bash
+# build the distributable tarball (from packaging/linux/)
+./packaging/linux/build-tarball.sh
+
+# on the target machine
+tar xzf sf2ais-linux.tar.gz
+cd sf2ais-linux
+sudo ./install.sh
+```
+
+This creates a dedicated `sf2ais` system user, a Python venv under
+`/opt/sf2ais`, and a `systemd` unit granting `CAP_NET_ADMIN`/`CAP_NET_RAW`
+(needed once the isolation layer is ported to Linux's `iptables`, not yet
+built). Manage it the normal way:
+
+```bash
+systemctl status sf2ais
+journalctl -u sf2ais -f
+sudo ./uninstall.sh   # asks before touching your shared_files/config
+```
+
+### Windows installer / macOS .app
+
+Not built yet — discussed as a `PyInstaller` + Inno Setup/NSIS pass for
+Windows, and `PyInstaller --windowed` + `.dmg` for macOS. For now, run it
+directly with Python as above on both.
+
+The **Sf2AiS Probe** desktop app (system tray IP monitor) IS available as a
+prebuilt Electron package — download it from the SF2AIS dashboard under
+"Desktop Probe App", or find installers in `probe-app/dist/`.
+
+---
 
 Then open `http://localhost:8000` (or your server's address) in a browser.
 
@@ -47,29 +160,170 @@ Then open `http://localhost:8000` (or your server's address) in a browser.
    - **Static IP** — your public IP never changes
    - **Current IP + probe** (recommended if you're not sure) — Sf2AiS gives you
      a small script for whichever computer stays on; it checks your public IP
-     every 5 minutes and updates your link automatically if it changes.
+     every 5 minutes and updates your link automatically if it changes, and
+     will push that update to DuckDNS too if you've set a token on the
+     dashboard.
 4. **Choose folders** — add one or more folders to share. Each one
    automatically gets its own generated username and password, shown once on
-   the finish screen — save them!
+   the finish screen — save them! You can also allow CLI execution and/or
+   temporary debug tunnels for the whole batch here, or fine-tune per-share
+   later from the dashboard.
 5. **Dashboard** — shows your live shareable link, an online/offline status
-   badge, a table of all shares with connection status, and a **+ Add Share**
-   button to create more username/password pairs for additional folders at
-   any time.
+   badge, DDNS status with a form to set/update your DuckDNS subdomain and
+   token, a table of all shares with connection status and independent
+   CLI/Tunnel toggles, and a **+ Add Share** button to create more
+   username/password pairs (with their own CLI/tunnel permissions) at any time.
 
-## The IP probe
+## The IP Probe — Desktop App
 
-Installers for Windows/macOS/Linux IP update probe ships as a small cross-platform
-**Python script** instead — it works identically on all three, you just point
-it at your gateway and schedule it:
+Sf2AiS now ships with a dedicated **Electron desktop probe app** — a native
+system-tray application that watches your public IP and keeps it updated
+on your gateway automatically.
+
+The Electron app provides:
+- **System tray icon** with real-time IP status and quick controls
+- **Glassmorphism settings UI** — configure gateway URL, probe token,
+  check interval, and startup behavior
+- **DuckDNS integration** — enter your DuckDNS subdomain + token directly
+  in the app; the probe pushes your IP to DuckDNS on every check
+- **Background operation** — runs silently in the notification area,
+  checks every 5 minutes (configurable), and auto-starts on Windows login
+- **Windows Task Scheduler** — one click creates a scheduled task that
+  launches the probe at logon and repeats the IP check every 5 minutes
+- **Direct download** — the SF2AIS web dashboard offers a "Download Desktop
+  Probe App" section with installers for Windows (.exe), macOS (.dmg), and
+  Linux (.AppImage)
+
+### Downloading from the Dashboard
+
+1. Open `http://localhost:8000/dashboard` in your browser
+2. Scroll to the **Desktop Probe App** section
+3. Click the download link for your platform
+4. Run the installer (or drag to Applications on macOS, make executable on Linux)
+5. The app will appear in your system tray — click it to open settings
+
+### Configuring the Probe
+
+In the app's settings window:
+- **Gateway URL** — your SF2AIS server address (e.g. `http://192.168.1.5:8000`
+  or your DDNS domain)
+- **Probe Token** — from the Sf2AiS dashboard setup (shown once during setup)
+- **DuckDNS Subdomain** — your free subdomain at `duckdns.org` (optional)
+- **DuckDNS Token** — your DuckDNS token (optional)
+- **Check interval** — how often to check (default: 5 minutes)
+- **Start with Windows** — also creates a Windows Task Scheduler entry
+
+Click **🌐 Open duckdns.org** to register a free DuckDNS hostname if you
+don't have one yet.
+
+### Using the Python Script (legacy)
+
+The original cross-platform Python script (`probe.py`) is still available
+as a lightweight alternative — works on Windows/macOS/Linux with Python 3
+installed, you just point it at your gateway and schedule it:
 
 - **Windows** — Task Scheduler, "repeat every 5 minutes"
-- **macOS / Linux** — a `cron` entry (`*/5 * * * * python3 /path/to/probe.py`)
+- **macOS / Linux** — `cron` entry (`*/5 * * * * python3 /path/to/probe.py`)
 
-- still busy sorting out an issue with the probe not building correctly on windows. havent tested the mac or linux distro just yet
-welcome to do a fix if needed its a qiuck fix. just havent had the time to do this yet. wile i been fin shing up my production project.
+Download it from the dashboard's **Setup Complete** page, or from
+`/probe/download?token=YOUR_TOKEN`. Full instructions are at
+`/probe/setup-guide`.
 
-Full instructions are generated for you on the dashboard once you choose the
-"current IP" option.
+## Operating Guide — How Tos
+
+### How to make the probe start automatically at boot
+
+**Windows:**
+1. Download the Windows installer from the dashboard (`/probe/desktop-app/windows`).
+2. Install the app, then open it. In settings, check **"Start with Windows"**.
+3. Click **Save Settings** — this creates a Windows Task Scheduler entry
+   (`Scripts/Startup-win.ps1`) that runs the probe at logon and repeats the
+   IP check every 5 minutes.
+4. Or manually: `powershell -ExecutionPolicy Bypass -NoProfile -File "Scripts\Startup-win.ps1" -AppPath "C:\Program Files\Sf2AiS Probe\sf2ais-probe.exe"`
+
+**Linux:**
+1. Install the AppImage from the dashboard (`/probe/desktop-app/linux`).
+2. Make it executable: `chmod +x sf2ais-probe.AppImage`
+3. Run the startup installer: `./Scripts/Startup-Linux --app-dir /path/to/probe`
+   This creates a cron job that runs at reboot. Use `--user-startup` for
+   a systemd user service instead.
+4. Or manually create a cron entry: `(crontab -e)` → add
+   `@reboot /path/to/sf2ais-probe.AppImage`
+
+**macOS:**
+1. Download the `.dmg` from the dashboard (`/probe/desktop-app/macos`).
+2. Drag "Sf2AiS Probe" to Applications and launch it.
+3. Run the startup installer: `./Scripts/Startup-Mac --app-path /Applications/Sf2AiS\ Probe.app`
+   This creates a LaunchAgent plist that starts at login and restarts every 5 min.
+4. Or manually: add the app to System Preferences → Users & Groups → Login Items.
+
+### How to configure DuckDNS
+
+**Via the Electron probe app:**
+1. Open the probe app window (click the tray icon).
+2. Enter your DuckDNS **Subdomain** (e.g. `wayne-debug`) and **Token**.
+3. Click **🌐 Open duckdns.org** if you need to register a new subdomain.
+4. Click **Save Settings**. The probe will push your IP to DuckDNS on every check.
+
+**Via the web dashboard:**
+1. Open `http://localhost:8000/dashboard`.
+2. In the DDNS section, enter your subdomain and token.
+3. Click **Save**. Future probe checks will report to DuckDNS.
+
+### How to verify the probe is working
+
+1. In the app window, check the status panel — it shows `lastCheck`,
+   `lastPublicIp`, and `lastReportOk`.
+2. Click **Check Now** to trigger an immediate IP check.
+3. Watch the log box at the bottom for status messages.
+4. On the dashboard, the "probe online" badge turns green when the probe
+   reports successfully within the last 15 minutes.
+
+### How to remove the probe from auto-start
+
+**Windows:** Delete the "Sf2AiS Probe" task in Task Scheduler (or run:
+`schtasks /delete /tn "Sf2AiS Probe" /f`)
+
+**Linux:** Run `./Scripts/Startup-Linux --remove` (or remove the cron entry)
+
+**macOS:** Run `./Scripts/Startup-Mac --remove` (or delete
+`~/Library/LaunchAgents/com.sf2ais.probe.plist`)
+
+### How to build the probe app from source
+
+```bash
+cd probe-app
+npm install --allow-scripts
+npx electron .          # run in development
+npx electron-builder --win --x64   # build Windows installer
+npx electron-builder --mac --x64   # build macOS .dmg
+npx electron-builder --linux --x64  # build Linux AppImage
+```
+
+## API reference (for AI assistants / scripting)
+
+All endpoints below require the share's Basic Auth credentials and are only
+available if the relevant feature is turned on for that share.
+
+**Files** (always available):
+- `GET /files` and download routes — browse/read the share's folder
+
+**CLI** (needs `cli_enabled` on the share):
+- `POST /cli/jobs` — `{"command": "...", "shell": "bash"|"powershell"|"cmd"|"auto", "cwd": "optional/subpath"}` → `{"job_id", "status"}`
+- `GET /cli/jobs/{job_id}` — poll for `status`/`stdout`/`stderr`/`exit_code`
+- `GET /cli/jobs` — last 50 jobs for that share
+
+**Tunnels** (needs `tunnel_enabled` on the share):
+- `GET /tunnel/interfaces` — list local network interfaces (for isolation mode's alias-IP picker)
+- `POST /tunnel/open` — `{"local_port", "protocol": "TCP"|"UDP", "ttl_seconds", "external_port", "verify": bool, "isolate": bool, "alias_ip", "interface_index", "trusted_remotes": ["1.2.3.4", "10.0.0.0/24"]}` → `{"tunnel_id", "public_url", "expires_in_seconds", "verify_result", "isolated"}`
+- `POST /tunnel/{tunnel_id}/close` — close early
+- `GET /tunnel` — list open/recent tunnels for that share
+
+**Dashboard** (admin credentials, not share credentials):
+- `POST /dashboard/ddns` — set DuckDNS `domain`/`token`
+- `POST /dashboard/shares/{id}/toggle-cli`, `.../toggle-tunnel` — flip per-share permissions
+- `GET /probe/desktop-app/{platform}` — download the packaged Electron probe app (requires admin auth). Platforms: `windows`, `macos`, `linux`
+- `GET /probe/download?token=...` — download the legacy Python probe script
 
 ## Security notes
 
@@ -81,7 +335,15 @@ Full instructions are generated for you on the dashboard once you choose the
   Tunnel) rather than exposing plain HTTP directly, especially for the static
   IP / current-IP options.
 - Anyone with a share's username/password can read every file in that share's
-  folder — only add folders you're comfortable to an external AI service reading.
+  folder — only add folders you're comfortable with an external AI service
+  reading. If CLI execution is also on for that share, they can run arbitrary
+  commands scoped to that folder — treat that credential like a limited shell
+  account, not just a file-read password.
+- **Tunnels are real, if temporary, internet exposure.** A dev server wasn't
+  built to be internet-facing — keep exposure windows short (the defaults
+  do this for you) and prefer isolation mode where it's available.
+- Isolation mode is Windows-only right now; on Linux/macOS a tunnel still
+  works, just without the alias-IP/firewall scoping layer.
 - Path traversal protection is included, but this project hasn't had a
   professional security audit — use it at your own risk on a home server.
 - To reset your dashboard login or start over, stop the server and delete

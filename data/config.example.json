@@ -1,0 +1,21 @@
+{
+  "admin": {
+    "username": "admin",
+    "password_hash": "$2b$12$PLACEHOLDER_GENERATED_AT_FIRST_RUN"
+  },
+  "network": {
+    "method": "probe",
+    "value": "",
+    "port": 8000,
+    "probe_token": "${SF2AIS_PROBE_TOKEN}",
+    "last_public_ip": null,
+    "last_ip_update": null,
+    "ddns": {
+      "provider": "duckdns",
+      "domain": "${SF2AIS_DDNS_SUBDOMAIN}",
+      "token": "${SF2AIS_DDNS_TOKEN}",
+      "last_result": null
+    }
+  },
+  "shares": []
+}
