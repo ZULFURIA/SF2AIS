@@ -106,9 +106,9 @@ button.danger { background: rgba(248,113,113,0.15); color: var(--danger); border
 
 ul.reqs { font-size: 12px; color: var(--muted); padding-left: 18px; margin-top: 10px; list-style: none; padding-left: 0; }
 ul.reqs li { padding: 2px 0; }
-ul.reqs li::before { content: "○ "; color: var(--muted); }
+ul.reqs li::before { content: "â—‹ "; color: var(--muted); }
 ul.reqs li.ok { color: var(--ok); }
-ul.reqs li.ok::before { content: "● "; color: var(--ok); }
+ul.reqs li.ok::before { content: "â— "; color: var(--ok); }
 
 .error { background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.3); color: #fecaca; padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-top: 16px; }
 
@@ -171,3 +171,23 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: upp
 .folder-row { display: flex; gap: 8px; margin-top: 10px; }
 .folder-row input { margin-top: 0; }
 .folder-row button { margin-top: 0; width: auto; padding: 0 14px; }
+
+/* CreoDevo glass dashboard layout â€” scoped to the authenticated wide dashboard */
+body:has(.web-dashboard-nav){padding:14px;justify-content:center;background:radial-gradient(ellipse at 18% 12%,rgba(255,130,167,.22),transparent 35%),radial-gradient(ellipse at 82% 78%,rgba(24,143,255,.24),transparent 40%),linear-gradient(130deg,#11152d,#1c204b 52%,#0c1935)}
+body:has(.web-dashboard-nav):before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 18% 12%,rgba(235,114,166,.28),transparent 35%),radial-gradient(circle at 82% 78%,rgba(25,144,255,.28),transparent 40%),linear-gradient(120deg,rgba(7,13,37,.78),rgba(25,24,62,.55));pointer-events:none}
+.wrap.wide{position:relative;width:100%;max-width:1840px;margin:0 auto;z-index:1}
+.wrap.wide>.glass{padding:0;overflow:hidden;max-width:none;min-height:calc(100vh - 28px);background:rgba(27,37,77,.56);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(26px);box-shadow:0 24px 90px rgba(0,0,0,.42)}
+.wrap.wide>.footer{display:none}
+.web-dashboard-shell{display:grid;grid-template-columns:230px minmax(0,1fr);min-height:calc(100vh - 30px)}
+.web-dashboard-nav{position:sticky;top:0;height:calc(100vh - 30px);min-height:700px;padding:28px 16px 20px;background:linear-gradient(180deg,rgba(17,24,59,.9),rgba(23,25,60,.76));border-right:1px solid rgba(255,255,255,.18);display:flex;flex-direction:column;backdrop-filter:blur(28px)}
+.web-brand{display:flex;align-items:center;gap:12px;padding:0 8px 28px}.web-brand>span{font-size:42px;color:#57ddec;text-shadow:0 0 18px #4c8fff}.web-brand strong,.web-brand small{display:block}.web-brand strong{font-size:22px}.web-brand small{font-size:12px;color:#b8c4e5}.web-dashboard-nav nav{display:grid;gap:7px}.web-dashboard-nav nav a{padding:13px 12px;border-radius:12px;color:#e9ecff;text-decoration:none;font-size:14px;border:1px solid transparent}.web-dashboard-nav nav a:hover,.web-dashboard-nav nav a.active{background:linear-gradient(110deg,rgba(77,137,255,.66),rgba(135,111,222,.54));border-color:rgba(255,255,255,.22);box-shadow:inset 3px 0 white}.web-nav-foot{margin-top:auto;padding:15px 8px 0;color:#9eacd2;font-size:9px;letter-spacing:.12em;line-height:1.8}.web-nav-foot small{letter-spacing:0;text-transform:none}
+.web-dashboard-main{min-width:0;padding:30px clamp(18px,3vw,48px);color:#f1f3ff}.web-dashboard-main .brand{display:none}.web-dashboard-main h2{font-size:26px;letter-spacing:-.025em}.web-dashboard-main .sub{color:#bdc7e5}.web-dashboard-main .card-sm{background:linear-gradient(135deg,rgba(104,119,179,.34),rgba(28,42,83,.65));border:1px solid rgba(231,237,255,.19);border-radius:17px;backdrop-filter:blur(22px);box-shadow:0 12px 30px rgba(0,0,0,.16);padding:18px 20px}.web-dashboard-main .label{color:#b9c8eb;letter-spacing:.08em}.web-dashboard-main button,.web-dashboard-main .btn{border-radius:11px}.web-dashboard-main input,.web-dashboard-main select{background:rgba(8,15,40,.46);border-color:rgba(255,255,255,.2);color:#f6f7ff}.web-dashboard-main table{border-collapse:separate;border-spacing:0 5px}.web-dashboard-main th{color:#aebde2}.web-dashboard-main td{background:rgba(13,23,55,.34);border-bottom:0}.web-dashboard-main td:first-child{border-radius:9px 0 0 9px}.web-dashboard-main td:last-child{border-radius:0 9px 9px 0}.web-dashboard-main .modal{background:rgba(27,37,77,.95)}
+@media(max-width:900px){.web-dashboard-shell{grid-template-columns:1fr}.web-dashboard-nav{position:relative;height:auto;min-height:0;padding:14px}.web-brand{padding:0 6px 12px}.web-dashboard-nav nav{display:flex;overflow-x:auto}.web-dashboard-nav nav a{white-space:nowrap;padding:9px 11px}.web-nav-foot{display:none}.web-dashboard-main{padding:18px}.wrap.wide>.glass{min-height:100vh}}
+/* FrameForge / CreoDevo glass visual system */
+.web-dashboard-shell{background:radial-gradient(ellipse at 15% 10%,rgba(157,78,221,.20),transparent 38%),radial-gradient(ellipse at 88% 82%,rgba(0,229,255,.13),transparent 42%),#090a12!important;color:#f5f5ff!important}
+.web-dashboard-nav{background:linear-gradient(180deg,rgba(28,26,54,.80),rgba(12,14,27,.76))!important;border-right:1px solid rgba(255,255,255,.13)!important;backdrop-filter:blur(26px) saturate(145%)!important}
+.web-dashboard-nav nav a{border:1px solid transparent!important;border-radius:13px!important;color:#c9c9dc!important;transition:.2s}
+.web-dashboard-nav nav a:hover,.web-dashboard-nav nav a.active{background:linear-gradient(105deg,rgba(0,229,255,.16),rgba(157,78,221,.16))!important;border-color:rgba(0,229,255,.23)!important;color:#fff!important;box-shadow:inset 3px 0 #00e5ff,0 8px 22px rgba(0,0,0,.18)!important}
+.web-dashboard-main .card,.web-dashboard-main .card-sm{background:linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.015)),rgba(15,15,30,.68)!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:20px!important;box-shadow:0 18px 54px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.05)!important;backdrop-filter:blur(26px) saturate(145%)!important;color:#f5f5ff!important}
+.web-dashboard-main input,.web-dashboard-main select{background:rgba(7,8,18,.68)!important;color:#f5f5ff!important;border:1px solid rgba(255,255,255,.14)!important;border-radius:10px!important}
+.web-dashboard-main [hidden]{display:none!important}

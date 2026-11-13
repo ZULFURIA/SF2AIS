@@ -1,122 +1,114 @@
-# Sf2AiS Probe — Operating Guide
+# SF2AiS Secure AI Workspace - Desktop Operating Guide
 
-## Overview
+## What the desktop app does
 
-The Sf2AiS Probe is a desktop Electron application that monitors your public
-IP address and reports changes to your Sf2AiS server. It runs in the system
-tray and can optionally update DuckDNS hostnames.
+The Electron desktop client provides the SF2AiS administration interface and local probe controls. It connects to the FastAPI server, manages project folders and AI client identities, configures access policies, displays server activity and controls local probe settings.
 
-## Installation
+The browser workspace uses the same renderer and design system. Local-only probe and Windows startup controls remain desktop-specific.
 
-### Option 1: Download from the Sf2AiS Dashboard (Recommended)
+## Start the desktop client
 
-1. Start your Sf2AiS server:
-   ```bash
-   uvicorn main:app --host 0.0.0.0 --port 8000
-   ```
-2. Open `http://localhost:8000/dashboard` and log in with your admin credentials.
-3. Scroll to the **Desktop Probe App** section.
-4. Click the download link for your platform:
-   - **Windows**: Download `.exe` (portable or installer)
-   - **macOS**: Download `.dmg`
-   - **Linux**: Download `.AppImage`
-5. Install/run the app. It will appear in your system tray.
-
-### Option 2: Build from source
-
-```bash
-cd probe-app
-npm install
-npx electron-builder --win --x64   # or --mac --x64, --linux --x64
-```
-
-The built artifacts appear in `dist/`.
-
-## Configuration
-
-Open the app window by clicking the tray icon. In the settings window:
-
-| Field | Description |
-|-------|-------------|
-| **Gateway URL** | Your Sf2AiS server address (e.g. `http://192.168.1.5:8000` or your DDNS domain) |
-| **Probe Token** | Authentication token from the Sf2AiS dashboard (shown once during setup) |
-| **DuckDNS Subdomain** | Your free DuckDNS subdomain (e.g. `wayne-debug`) — optional |
-| **DuckDNS Token** | Your DuckDNS token from `duckdns.org` — optional |
-| **Check interval** | How often to check public IP (default: 5 minutes, min: 1) |
-| **Start with Windows** | Auto-start at Windows login + create Task Scheduler entry |
-
-Click **🌐 Open duckdns.org** to register a free DuckDNS hostname if you
-don't have one yet.
-
-## How It Works
-
-1. Every `N` minutes (default 5), the probe fetches your public IP from
-   `api.ipify.org`.
-2. If the IP has changed since the last check, the probe POSTs the new IP to
-   `POST /api/ip-update` on your Sf2AiS gateway with your probe token.
-3. If DuckDNS is configured, the probe also calls
-   `https://www.duckdns.org/update?domains=...&token=...&ip=...` to update
-   your DuckDNS hostname.
-4. The probe log is stored at `~/.sf2ais-probe/probe.log` and is viewable
-   from the app window.
-
-## Windows Task Scheduler Integration
-
-When you check **"Start with Windows"** and click **Save Settings**, the app
-automatically runs a PowerShell script (`scripts/create-task.ps1`) that:
-
-- Creates a Windows Task Scheduler entry named **"Sf2AiS Probe"**
-- Sets two triggers:
-  1. **At log on** — launches the probe when you sign in
-  2. **Every 5 minutes** — keeps the IP check running (matches the
-     documented probe schedule)
-- Configures the task to run with highest privileges and restart on failure
-
-This ensures the IP monitor survives reboots and runs on the documented
-5-minute schedule even if the app wasn't already running.
-
-### Manual scheduler creation
+### Development
 
 ```powershell
-powershell -ExecutionPolicy Bypass -NoProfile -File "create-task.ps1" -AppPath "C:\Path\To\Sf2AiS Probe.exe"
+Set-Location C:\CreoDevo\SF2AIS\probe-app
+npm install
+npm run start
 ```
 
-## System Tray Controls
+### Build and run an unpacked Windows test build
 
-Right-click the tray icon for quick actions:
-- **Start/Stop Probe** — toggle the background check loop
-- **Check Now** — trigger an immediate IP check
-- **Open Dashboard** — open your Sf2AiS web dashboard in browser
-- **Open Settings** — open the Electron app window
-- **Quit** — stop the probe and exit
+```powershell
+npm run build:dir
+.\dist\win-unpacked\SF2AiS Secure AI Workspace.exe
+```
+
+The build output is not the installed application. Close the test build before rebuilding if Windows has locked Electron DLLs. The installed copy is separate and is not replaced by build:dir.
+
+## Connect to the server
+
+1. Open **System Settings**.
+2. Enter the server URL, administrator username and administrator password.
+3. Remote authenticated connections require HTTPS. HTTP is allowed for localhost development.
+4. Select **Connect and verify**.
+5. The administrator password is stored by the Electron main process using Windows secure credential storage; it is not exposed to renderer JavaScript.
+
+Disconnect from the server to remove the saved connection credential from the desktop client.
+
+## Create a project folder
+
+1. Open **Workspace Shares**.
+2. Enter the full path as it exists on the server.
+3. Select the share-level capabilities required for the project.
+4. Select **Create share on server**.
+
+New desktop-created projects do not use shared folder usernames/passwords. Existing legacy shares can continue using their older Basic-auth configuration, but new projects use individual AI client tokens.
+
+## Register an AI/user identity
+
+1. Open **Access & Permissions** and select the project.
+2. Enter a connection name that identifies the AI or user.
+3. Select only the additional capabilities needed (CLI, IDE, Git, tunnel or computer use).
+4. Create the scoped client token.
+5. Copy the token immediately. It is displayed once and must be stored securely by the client using it.
+6. Select the identity in the **Connected user / AI** dropdown.
+
+A new identity has no project-file permissions until the administrator grants them.
+
+## Configure project-file permissions
+
+The **Connected identity permissions** panel has:
+
+- A top dropdown for the registered AI/user identity.
+- Project-root checkboxes for Read, Write, Deny, Upload and Download.
+- A **Choose file / folder** button that browses the server-side project tree.
+- The same five checkboxes for each selected file/folder override.
+- A path-rule list where individual overrides can be removed.
+- **Save identity project access** to persist the policy.
+
+Write and Upload controls are available only when the project-level Workspace write master switch is enabled. This is an additional gate; it does not grant the identity permission by itself.
+
+Deny blocks the selected path and all descendants, even when a parent path grants access. A path rule with all permissions off removes inherited rights at that path.
+
+## Capability notes
+
+- **Read:** browse and read allowed files.
+- **Write:** create, edit, move and delete allowed files/folders.
+- **Upload:** upload files independently of Download.
+- **Download:** download files independently of Upload.
+- **CLI:** requires unrestricted root Read, Write, Upload and Download and no path overrides, because shell commands can access the entire mounted project.
+- **Git:** repository-wide Git operations are disabled when path-specific rules exist.
+- **IDE:** uses the same server-side file permission checks.
+- **Computer use:** separate from project-file permissions and remains subject to its own share/client scopes.
+
+## Appearance
+
+System Settings includes the glass-effect controls:
+
+- Window background opacity.
+- Card opacity.
+- Primary and secondary card frost tint.
+- Purple/blue window and card neon border colours.
+
+Changes preview immediately and save automatically. Text contrast remains shaded to help maintain legibility over transparent backgrounds.
+
+## Local probe and startup
+
+The local probe reports public IP changes and can update a configured DuckDNS hostname. It is separate from the SF2AiS server. The Windows startup helper and scheduled task are documented in the Startup Guide.
 
 ## Troubleshooting
 
-### The probe says "Stopped"
-Make sure the Gateway URL is correct and the Sf2AiS server is running. The
-probe token must match what was shown during Sf2AiS setup.
+| Problem | Action |
+|---|---|
+| Server connection fails | Check the URL, HTTPS certificate, admin credentials and server availability |
+| Project folder cannot be created | Confirm the folder path exists or that the server account can create it |
+| AI token receives 403 | Confirm the identity is selected and the requested path/action is granted; inspect Deny and parent rules |
+| Write/Upload checkboxes disabled | Enable the share-level Workspace write master switch, then save and reopen permissions |
+| CLI unavailable | Confirm share/client CLI scope, sandbox availability and unrestricted root project permissions |
+| Git unavailable | Remove path-specific rules only if full-repository access is appropriate and explicitly intended |
+| Build fails with DLL lock | Close the isolated test app and retry; do not terminate unrelated Electron processes |
+| Installed app remains older | Install the newly verified package separately; build:dir does not update the installed copy |
 
-### DuckDNS update fails
-- Verify your subdomain and token at `https://www.duckdns.org/`
-- Check the live log in the app for error details
-- Ensure your firewall allows outbound HTTPS (port 443)
+## Security reminders
 
-### Task Scheduler didn't create
-- Run `create-task.ps1` manually with PowerShell to see the error
-- Ensure you're running the app as a user with permission to create scheduled tasks
-- The task is created under your current Windows user account
-
-### The app won't start
-- Try deleting `%USERPROFILE%\.sf2ais-probe\config.json` to reset settings
-- Re-download from the Sf2AiS dashboard if the binary is corrupted
-
-## File Locations
-
-| File | Path |
-|------|------|
-| Config | `%USERPROFILE%\.sf2ais-probe\config.json` |
-| Logs | `%USERPROFILE%\.sf2ais-probe\probe.log` |
-| App source | `probe-app/` |
-| Build output | `probe-app/dist/` |
-| Source code | `probe-app/main.js`, `probe-app/preload.js`, `probe-app/renderer/` |
-| Scheduler script | `probe-app/scripts/create-task.ps1` |
+Never share the administrator password with an AI client. Issue one token per identity, grant the minimum file permissions, and revoke tokens that are no longer required. The legacy connection/session API is administrator-managed and separate from project-token registration. Passkey/biometric approval and authenticator-app pairing are not yet integrated.

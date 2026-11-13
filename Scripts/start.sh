@@ -26,7 +26,7 @@ else
   VENV_PY="$REPO_ROOT/venv/bin/python"
   [[ -x "$VENV_PY" ]] && PYTHON="$VENV_PY"
 
-  nohup "$PYTHON" -m uvicorn main:app --host 0.0.0.0 --port "$PORT" \
+  nohup "$PYTHON" -m uvicorn main:app --host 127.0.0.1 --port "$PORT" --proxy-headers --forwarded-allow-ips 127.0.0.1 \
     > "$REPO_ROOT/sf2ais.log" 2>&1 &
   echo $! > "$PID_FILE"
   echo "SF2AIS server starting (PID $(cat "$PID_FILE")) on port $PORT..."

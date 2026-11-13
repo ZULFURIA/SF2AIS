@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "desktop-commander": {
+      "type": "stdio",
+      "command": "C:\\Program Files\\nodejs\\node.exe",
+      "args": ["${PLUGIN_ROOT}/launcher.mjs"],
+      "cwd": "${PLUGIN_ROOT}"
+    }
+  }
+}

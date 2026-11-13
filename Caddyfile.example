@@ -1,0 +1,5 @@
+# Replace with a real DNS name pointing to this server.
+# Caddy automatically obtains and renews a publicly trusted TLS certificate.
+files.example.com {
+    reverse_proxy 127.0.0.1:8000
+}

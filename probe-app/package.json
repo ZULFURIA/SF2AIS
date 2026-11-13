@@ -1,23 +1,26 @@
 {
-  "name": "sf2ais-probe",
-  "version": "1.0.0",
-  "description": "Sf2AiS IP Probe — keeps your shareable link alive",
+  "name": "sf2ais-desktop",
+  "version": "1.1.3",
+  "description": "SF2AiS Secure AI Workspace desktop control client",
   "main": "main.js",
   "author": "Wayne Thomas Dougall (ZULFURIA)",
   "license": "Sf2AiS-Noncommercial-1.0",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win --x64",
+    "build": "electron-builder",
     "build:dir": "electron-builder --win --x64 --dir",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "build:mac": "electron-builder --mac"
   },
   "devDependencies": {
     "electron": "^31.7.7",
     "electron-builder": "^24.13.0"
   },
   "build": {
-    "appId": "com.zulfuria.sf2ais-probe",
-    "productName": "Sf2AiS Probe",
+    "appId": "com.creodevo.sf2ais",
+    "productName": "SF2AiS Secure AI Workspace",
     "directories": {
       "output": "dist"
     },
@@ -34,27 +37,86 @@
         {
           "target": "nsis",
           "arch": [
-            "x64"
+            "x64",
+            "arm64"
           ]
         },
         {
           "target": "portable",
           "arch": [
-            "x64"
+            "x64",
+            "arm64"
           ]
         }
       ],
-      "icon": "assets/icon.png"
+      "icon": "assets/icon.png",
+      "artifactName": "SF2AiS-Desktop-Setup-${version}-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Sf2AiS Probe"
+      "shortcutName": "SF2AiS Secure AI Workspace",
+      "runAfterFinish": true
     },
     "portable": {
-      "artifactName": "sf2ais-probe-portable.exe"
-    }
+      "artifactName": "SF2AiS-Desktop-Portable-${version}-${arch}.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "artifactName": "SF2AiS-Desktop-${version}-${arch}.${ext}",
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "artifactName": "SF2AiS-Desktop-${version}-${arch}.${ext}",
+      "category": "Utility"
+    },
+    "asar": true,
+    "extraResources": [
+      {
+        "from": "scripts",
+        "to": "scripts",
+        "filter": [
+          "Startup-win.ps1"
+        ]
+      }
+    ]
+  },
+  "allowScripts": {
+    "electron@31.7.7": true
   }
 }

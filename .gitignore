@@ -1,5 +1,11 @@
 # Runtime config + secrets — never commit real credentials
 data/config.json
+data/audit.jsonl
+data/audit.jsonl.*
+data/old/
+.sf2ais-server.pid
+sf2ais.log
+*.log
 .env
 .env.*
 !.env.example
@@ -15,3 +21,31 @@ __pycache__/
 # Python caches / virtualenvs
 venv/
 .venv/
+
+/resources/cua-driver/
+/third_party/cua-release/
+
+/data/cua-driver/
+
+# Firefly and workstation-local credentials/configuration (never commit)
+/.sf2ais-probe/config.json
+**/.sf2ais-probe/config.json
+
+/test-share/
+
+# Local-only Python environments, test state and generated artifacts
+.venv-cua/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+logs/
+/data/
+*.bak
+*.orig
+*.pre-project-access-*.bak
+*.pre-workspace-*.bak
+nul
+
+# Generated desktop packages and unpacked builds
+probe-app/dist/
+probe-app/release/
