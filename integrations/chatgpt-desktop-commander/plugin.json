@@ -1,0 +1,35 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "sf2ais-desktop-commander",
+  "version": "0.1.0",
+  "description": "Local Windows development workspace access through Desktop Commander, scoped to CreoDevo file operations.",
+  "author": {
+    "name": "CreoDevo"
+  },
+  "keywords": [
+    "sf2ais",
+    "creodevo",
+    "desktop-commander",
+    "windows",
+    "developer-tools"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "SF2AiS Desktop Access",
+        "shortDescription": "Local Windows development tools",
+        "longDescription": "Starts the installed Desktop Commander MCP server locally from ChatGPT Desktop. Filesystem operations are restricted to C:\\CreoDevo, but terminal commands are not sandboxed by this allowlist and may access other host paths. Use only trusted commands. This local plugin works only in ChatGPT Desktop, not web or mobile.",
+        "developerName": "CreoDevo",
+        "category": "Developer Tools",
+        "capabilities": [
+          "Read files",
+          "Edit files",
+          "Run local commands"
+        ],
+        "defaultPrompt": [
+          "Use SF2AiS Desktop Access for approved work inside C:\\CreoDevo."
+        ]
+      }
+    }
+  }
+}

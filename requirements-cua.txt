@@ -1,0 +1,4 @@
+﻿cua-driver==0.46.0
+# Optional local CUA development/runtime dependency. The production Windows
+# installer may instead deploy the separately pinned upstream 0.46.1 binary
+# documented in THIRD_PARTY_NOTICES.md. Do not mix versions in one package.

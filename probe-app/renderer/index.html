@@ -3,104 +3,192 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sf2AiS Probe</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>SF2AiS — Secure AI Workspace</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="wrap">
-    <div class="glass">
-      <div class="brand">
-        <div class="brand-icon" aria-hidden="true">🛰️</div>
-        <div>
-          <h1>Sf2AiS Probe</h1>
-          <p class="tagline">Secure Files to AI Server</p>
-        </div>
+  <header class="window-chrome"><div class="window-brand"><span class="window-brand-mark">∞</span><span>SF2AiS <i>SECURE AI WORKSPACE</i></span></div><div class="window-controls"><button id="window-minimize" aria-label="Minimise">−</button><button id="window-maximize" aria-label="Maximise">□</button><button id="window-close" class="window-close" aria-label="Close">×</button></div></header>
+  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div><div class="ambient ambient-three"></div>
+  <div class="app-shell">
+    <aside class="sidebar glass">
+      <div class="brand"><div class="brand-symbol">∞</div><div><strong>SF2AiS</strong><small>SECURE AI WORKSPACE</small></div></div>
+      <div class="workspace-label">WORKSPACE</div>
+      <nav class="side-nav" aria-label="Workspace navigation">
+        <button class="nav-item active" data-page="dashboard"><span class="nav-icon">◈</span><span>Overview</span></button>
+        <button class="nav-item" data-page="shares"><span class="nav-icon">▤</span><span>Workspace Shares</span></button>
+        <button class="nav-item" data-page="permissions"><span class="nav-icon">⬡</span><span>Access &amp; Permissions</span></button>
+        <button class="nav-item" data-page="network"><span class="nav-icon">⌁</span><span>Network</span></button>
+        <button class="nav-item" data-page="sandbox"><span class="nav-icon">▣</span><span>Sandbox &amp; CLI</span></button>
+        <button class="nav-item" data-page="ide"><span class="nav-icon">⌘</span><span>IDE Integrations</span></button>
+        <button class="nav-item" data-page="computer-use"><span class="nav-icon">◎</span><span>Computer Use</span></button>
+        <button class="nav-item" data-page="monitor"><span class="nav-icon">◉</span><span>AI Realtime Monitor</span></button>
+        <button class="nav-item" data-page="downloads"><span class="nav-icon">⇩</span><span>Desktop Installers</span></button>
+      </nav>
+      <div class="workspace-label secondary-label">SYSTEM</div>
+      <nav class="side-nav">
+        <button class="nav-item" data-page="activity"><span class="nav-icon">≋</span><span>Activity &amp; Logs</span></button>
+        <button class="nav-item" data-page="settings"><span class="nav-icon">⚙</span><span>System Settings</span></button>
+      </nav>
+      <div class="sidebar-spacer"></div>
+      <div class="connection-card">
+        <div class="connection-heading"><span class="pulse-dot" id="sidebar-dot"></span><strong id="sidebar-status-text">Service stopped</strong></div>
+        <small id="sidebar-status-ip">Waiting for IP check</small>
+        <small id="sidebar-status-last">Last check: never</small>
       </div>
+      <div class="sidebar-foot"><span class="mini-mark">C</span><span>CREODEVO ECOSYSTEM</span></div>
+    </aside>
 
-      <div class="status-row">
-        <span id="status-badge" class="badge offline">
-          <span class="pulse"></span>
-          <span id="status-text">Stopped</span>
-        </span>
-        <span id="ip-display" class="ip-pill">—</span>
+    <main class="main-area">
+      <header class="topbar">
+        <div><div class="eyebrow">CREODEVO <span>/</span> SF2AIS <span>/</span> <b id="breadcrumb">OVERVIEW</b></div><h1 id="page-title">Workspace overview</h1><p id="page-subtitle">Your secure AI workspace, at a glance.</p></div>
+        <div class="top-actions"><div class="service-pill"><span class="pulse-dot" id="top-dot"></span><span id="system-health">Local service</span><b id="status-text">Stopped</b></div><button class="icon-action" id="btn-top-check" title="Check IP now">↻</button><div class="utility-card glass" aria-label="Workspace shortcuts"><button class="utility-icon" id="btn-top-notifications" title="Notifications" aria-label="Notifications">&#x1F514;</button><button class="utility-icon" id="btn-top-settings" title="Settings" aria-label="Settings">&#x2699;</button><button class="utility-icon" id="btn-top-workspace" title="Local workspace" aria-label="Local workspace">&#x25A6;</button></div></div>
+      </header>
+
+      <div class="page-stack">
+        <section class="page active artwork-dashboard" id="page-dashboard">
+          <div class="dashboard-heading">
+            <div><span class="eyebrow cyan">SECURE WORKSPACE / OVERVIEW</span><h2>SF2AiS Desktop</h2><p>Your AI Workspace. Secure and in Your Control.</p></div>
+            <div class="dashboard-heading-actions"><div class="all-systems"><span class="pulse-dot" id="dash-health-dot"></span><span><b id="dash-health-title">System status</b><small id="dash-health-subtitle">Checking local services…</small></span></div><div class="utility-card glass" aria-label="Workspace shortcuts"><button class="utility-icon" id="btn-notifications" title="Notifications" aria-label="Notifications">&#x1F514;</button><button class="utility-icon" id="btn-dashboard-settings" title="Settings" aria-label="Settings">&#x2699;</button><button class="utility-icon" id="btn-dashboard-workspace" title="Local workspace" aria-label="Local workspace">&#x25A6;</button></div></div>
+          </div>
+          <div class="summary-cards">
+            <button class="summary-card glass" data-open-page="shares"><span class="summary-icon folder-icon">▰</span><span class="summary-copy"><b id="dash-share-count">—</b><small>Active Share</small><em>View all →</em></span></button>
+            <button class="summary-card glass" data-open-page="permissions"><span class="summary-icon shield-icon">⬡</span><span class="summary-copy"><b id="dash-client-count">—</b><small>Connected Clients</small><em>Manage →</em></span></button>
+            <button class="summary-card glass" data-open-page="network"><span class="summary-icon globe-icon">◎</span><span class="summary-copy"><b>Public Access</b><small class="good-state" id="dash-public-state">Not verified</small><em>View details →</em></span></button>
+            <button class="summary-card glass" data-open-page="sandbox"><span class="summary-icon cube-icon">⬡</span><span class="summary-copy"><b>Sandbox</b><small class="good-state" id="dash-sandbox-state">Status unknown</small><em>Configure →</em></span></button>
+          </div>
+          <div class="dashboard-columns">
+            <div class="dashboard-left-column">
+              <article class="glass artwork-panel active-share-panel">
+                <div class="art-panel-heading"><span class="summary-icon folder-icon">▰</span><h3>Active Share</h3><span class="panel-menu">•••</span></div>
+                <div class="active-share-content"><div class="share-preview">▧</div><div class="share-description"><b id="dash-share-name">No active share selected</b><small id="dash-share-path">Create or select a workspace share to begin.</small><span class="access-pill" id="dash-share-access">Awaiting configuration</span></div></div>
+                <div class="share-actions"><button class="btn glass-btn" data-open-page="shares">▰ Open in Explorer</button><button class="btn glass-btn" data-open-page="permissions">⬡ Manage Access</button><button class="btn glass-btn" data-open-page="shares">↗ Share Link</button></div>
+              </article>
+              <article class="glass artwork-panel network-art-panel">
+                <div class="art-panel-heading"><span class="summary-icon globe-icon">◎</span><h3>Network Connectivity</h3><span class="status-tag neutral" id="network-health">Checking</span></div>
+                <div class="network-art-content"><div><strong id="network-state-title">Reachability not verified</strong><p id="network-state-detail">IP reporting does not independently prove inbound access.</p><small>Connection method: <b id="dash-connection-method">Not configured</b></small><small>External URL: <b id="network-ip">—</b></small></div><div class="network-map-art" aria-hidden="true"><span>✦</span><i></i><b></b></div></div>
+                <div class="art-panel-footer"><span id="dash-network-report">Waiting for a report.</span><button class="btn glass-btn" id="btn-dash-check-now">↻ Test Again</button></div>
+              </article>
+              <article class="glass artwork-panel recent-art-panel">
+                <div class="art-panel-heading"><span class="summary-icon activity-icon">⌁</span><h3>Recent Activity</h3><button class="text-btn" data-open-page="activity">View all →</button></div><div class="mini-log" id="dashboard-log"><span class="log-empty">Local probe activity will appear here.</span></div>
+              </article>
+            </div>
+            <div class="dashboard-right-column">
+              <article class="glass artwork-panel permissions-art-panel">
+                <div class="art-panel-heading"><span class="summary-icon shield-icon">⬡</span><h3>Permissions</h3><button class="btn glass-btn" data-open-page="permissions">Manage</button></div>
+                <div class="permission-switch-row"><span class="permission-row-icon">▣</span><span><b>File Access</b><small>Read and/or write to shared folders</small></span><em class="permission-state">Scoped</em></div>
+                <div class="permission-switch-row"><span class="permission-row-icon">✦</span><span><b>CLI Access</b><small>Run commands in isolated sandbox</small></span><em class="permission-state">Scoped</em></div>
+                <div class="permission-switch-row"><span class="permission-row-icon">⌘</span><span><b>IDE Access</b><small>Use VS Code in a secure workspace</small></span><em class="permission-state">Scoped</em></div>
+                <div class="permission-switch-row"><span class="permission-row-icon">▣</span><span><b>Computer Use (CUA)</b><small>Allow desktop interaction</small></span><em class="permission-state disabled-state">Approval required</em></div>
+                <div class="permission-switch-row"><span class="permission-row-icon">⬡</span><span><b>Host Access</b><small>Access to host services</small></span><em class="permission-state disabled-state">Disabled</em></div>
+              </article>
+              <article class="glass artwork-panel quick-actions-panel">
+                <div class="art-panel-heading"><span class="summary-icon quick-icon">ϟ</span><h3>Quick Actions</h3></div>
+                <div class="quick-action-grid"><button class="btn glass-btn" data-open-page="shares">▰ Create Share</button><button class="btn glass-btn" data-open-page="ide">▣ Open Workbench</button><button class="btn glass-btn" data-open-page="sandbox">⬡ Start Sandbox</button><button class="btn glass-btn" data-open-page="network">◎ Configure Network</button></div>
+              </article>
+              <article class="glass artwork-panel status-art-panel"><div class="art-panel-heading"><h3>Desktop probe</h3><span class="status-tag neutral" id="dash-probe-status">Stopped</span></div><div class="status-art-details"><b id="current-ip">Waiting…</b><small id="last-check">Last check: never</small><small id="report-state">Awaiting first report</small></div><button class="text-btn" data-open-page="settings">Probe settings →</button></article>
+            </div>
+          </div>
+        </section>
+
+        <section class="page" id="page-shares">
+          <div class="page-intro glass"><span class="eyebrow cyan">WORKSPACE MANAGEMENT</span><h2>Workspace shares</h2><p>Create and manage server-side folder boundaries from this desktop client.</p></div>
+          <article class="glass detail-panel"><h3>Create workspace share</h3><form id="create-share-form" class="native-form">
+            <label>Folder path<input id="new-share-folder" required placeholder="C:\SF2AiS\Workspaces\Project"></label>
+            <p class="muted">Project folders are accessed through individually issued AI client identities. No shared folder username or password is created for new projects.</p>
+            <div class="native-check-grid"><label><input type="checkbox" id="new-share-write"> Allow workspace write</label><label><input type="checkbox" id="new-share-cli"> Enable isolated CLI</label><label><input type="checkbox" id="new-share-ide"> Enable IDE integration</label><label><input type="checkbox" id="new-share-tunnel"> Enable network tunnel</label></div>
+            <button class="btn primary" type="submit">Create share on server</button></form></article>
+          <article class="glass detail-panel"><div class="panel-head"><h3>Configured shares</h3><button class="btn ghost" id="btn-refresh-server">Refresh</button></div><div id="native-share-list" class="native-list"><p class="muted">Connect to a server to load shares.</p></div></article>
+        </section>
+
+        <section class="page" id="page-permissions">
+          <div class="page-intro glass"><span class="eyebrow cyan">ZERO-TRUST ACCESS</span><h2>Access &amp; permissions</h2><p>Configure project capabilities and independently grant file access to each registered user or AI identity.</p></div>
+          <article class="glass detail-panel"><label for="permission-share-select">Workspace share</label><select id="permission-share-select"><option value="">Select a share</option></select>
+            <div class="native-check-grid"><label><input type="checkbox" data-share-cap="workspace_write_enabled"> Workspace write</label><label><input type="checkbox" data-share-cap="cli_enabled"> Isolated CLI</label><label><input type="checkbox" data-share-cap="ide_enabled"> IDE integration</label><label><input type="checkbox" data-share-cap="tunnel_enabled"> Network tunnel</label><label><input type="checkbox" data-share-cap="computer_use_enabled"> Computer use provider</label><label><input type="checkbox" data-share-cap="computer_use_observe_enabled"> Observe screen</label><label><input type="checkbox" data-share-cap="computer_use_control_enabled"> Control input</label></div>
+            <button class="btn primary" id="btn-save-share-permissions">Save share permissions</button></article>
+          <article class="glass detail-panel"><h3>Register connected user / AI</h3><p>Issue a unique token to identify this AI or connected user. New identities receive no project-file access until you grant it below.</p><form id="create-client-form" class="native-form"><label>Connection name<input id="new-client-name" required minlength="2" maxlength="80" placeholder="Hermes on Firefly"></label>
+            <div class="native-check-grid"><label><input type="checkbox" data-client-perm="cli"> CLI execution</label><label><input type="checkbox" data-client-perm="ide"> IDE access</label><label><input type="checkbox" data-client-perm="tunnel"> Network tunnel</label><label><input type="checkbox" data-client-perm="git_stage"> Git stage</label><label><input type="checkbox" data-client-perm="git_commit"> Git commit</label><label><input type="checkbox" data-client-perm="git_push"> Git push</label><label><input type="checkbox" data-client-perm="computer_use"> Computer use</label><label><input type="checkbox" data-client-perm="computer_use_observe"> Observe screen</label><label><input type="checkbox" data-client-perm="computer_use_control"> Control input</label></div>
+            <button class="btn primary" type="submit">Create scoped client token</button></form><div id="new-client-token" class="token-result" hidden></div></article>
+          <article class="glass detail-panel"><div class="panel-head"><div><span class="eyebrow cyan">PROJECT ACCESS CONTROL</span><h3>Connected identity permissions</h3></div><span class="status-tag neutral">Default: denied</span></div>
+            <label for="project-client-select">Connected user / AI</label><select id="project-client-select"><option value="">Select a connected identity</option></select>
+            <p class="muted">These permissions apply only to the selected identity and this project folder. Explicit Deny overrides inherited permissions.</p>
+            <h4>Project folder defaults</h4><div class="native-check-grid project-permission-grid">
+              <label><input type="checkbox" data-project-root-perm="read"> Read</label><label><input type="checkbox" data-project-root-perm="write"> Write</label><label><input type="checkbox" data-project-root-perm="deny"> Deny all</label><label><input type="checkbox" data-project-root-perm="upload"> Upload</label><label><input type="checkbox" data-project-root-perm="download"> Download</label>
+            </div>
+            <div class="project-path-editor"><h4>Specific file / folder override</h4><div class="project-path-input"><input id="project-path-value" type="text" placeholder="Choose a project-relative path" readonly><button class="btn ghost" id="btn-pick-project-path" type="button">Choose file / folder</button></div>
+              <div class="native-check-grid project-permission-grid"><label><input type="checkbox" data-project-rule-perm="read"> Read</label><label><input type="checkbox" data-project-rule-perm="write"> Write</label><label><input type="checkbox" data-project-rule-perm="deny"> Deny all</label><label><input type="checkbox" data-project-rule-perm="upload"> Upload</label><label><input type="checkbox" data-project-rule-perm="download"> Download</label></div>
+              <button class="btn ghost" id="btn-add-project-rule" type="button">Add path permission</button>
+            </div>
+            <div id="project-access-rules" class="native-list"><p class="muted">Select an AI identity to manage its path permissions.</p></div>
+            <div class="page-actions"><button class="btn primary" id="btn-save-project-access" type="button">Save identity project access</button></div>
+          </article>
+          <article class="glass detail-panel"><h3>Clients on selected share</h3><div id="native-client-list" class="native-list"><p class="muted">Select a share.</p></div></article>
+          <dialog id="project-path-dialog" class="project-path-dialog"><div class="project-picker-head"><div><span class="eyebrow cyan">PROJECT PATH PICKER</span><h3>Choose a file or folder</h3><p id="project-picker-current" class="muted">/</p></div><button class="btn ghost" id="btn-close-project-picker" type="button">Close</button></div><div class="page-actions"><button class="btn ghost" id="btn-project-picker-up" type="button">Up one level</button><button class="btn primary" id="btn-project-picker-use-folder" type="button">Use this folder</button></div><div id="project-picker-list" class="native-list"><p class="muted">Loading project folders...</p></div></dialog>
+        </section>
+
+        <section class="page" id="page-network">
+          <div class="page-intro glass"><span class="eyebrow cyan">NETWORK &amp; CONNECTIVITY</span><h2>Network status &amp; settings</h2><p>Configure the HTTPS gateway, dynamic DNS and router discovery. Router forwarding is never applied without an explicit approval action. The local API remains on loopback port 8000.</p></div>
+          <div class="overview-grid">
+            <article class="glass detail-panel"><span class="eyebrow">PUBLIC IP REPORT</span><h3 id="network-page-ip">Not detected</h3><p id="network-page-report">Waiting for a report.</p><button class="btn ghost" id="btn-check-now">Run IP report</button></article>
+            <article class="glass detail-panel"><span class="eyebrow">HTTPS GATEWAY</span><h3 id="network-page-gateway">Not configured</h3><p>Configured reverse-proxy port. This is not the local SF2AiS API port.</p><div class="native-form"><label>HTTPS port<input id="network-https-port" type="number" min="1" max="65535" value="443"></label><button class="btn primary" id="btn-save-network-port" type="button">Save HTTPS port</button></div><small id="network-lan-ip" class="muted">LAN address not detected</small></article>
+          </div>
+          <article class="glass detail-panel"><div class="panel-head"><h3>Router discovery</h3><button class="btn primary" id="btn-router-discover" type="button">Discover router</button></div><p id="router-discovery-status">Router discovery has not been run.</p><div class="native-check-grid"><span>UPnP IGD: <b id="router-upnp-status">Unknown</b></span><span>NAT-PMP: <b id="router-natpmp-status">Unknown</b></span><span>PCP: <b id="router-pcp-status">Unknown</b></span><span>Gateway: <b id="router-gateway-status">Unknown</b></span></div><p id="nat-diagnostics-status" class="muted">NAT diagnostics have not been run.</p></article>
+          <article class="glass detail-panel"><div class="panel-head"><h3>Router administration &amp; manual setup</h3><button class="btn ghost" id="btn-open-router-admin" type="button" disabled>Open router login page ↗</button></div><p id="router-admin-status" class="muted">Discover your router to open its local administration page.</p><p>SF2AiS does not collect or store your router password or automate vendor-specific router login forms. Sign in directly in the router page. UPnP IGD normally lets SF2AiS request a temporary rule without your router login once TLS is ready. If UPnP is disabled or unsupported, create the rule manually using the instructions below.</p><details class="router-manual-guide"><summary>Show manual port-forwarding instructions</summary><ol><li>Sign in to your router administration page and open <b>Port Forwarding</b>, <b>NAT</b>, <b>Virtual Server</b> or <b>Firewall Rules</b>.</li><li>Reserve the SF2AiS computer LAN address <code id="router-manual-local-ip">not detected</code> in DHCP / Address Reservation.</li><li>Create one rule: external port <code id="router-manual-external-port">443</code>, internal address <code id="router-manual-local-ip-copy">not detected</code>, internal port <code id="router-manual-internal-port">443</code>, protocol <b>TCP</b>.</li><li>Save/apply the rule. Do not forward port 8000, Docker, SSH, or router administration.</li><li>Only test from a separate network (for example, mobile data with Wi-Fi off) after TLS is working and the public hostname/DDNS is configured.</li></ol><p class="muted">Router menus differ by manufacturer. If the router is behind another router or carrier-grade NAT, forwarding may also be required upstream or may not be possible on the current connection.</p></details><p id="https-listener-status" class="muted">TLS listener status has not been checked.</p></article>
+          <article class="glass detail-panel"><h3>Dynamic DNS · DuckDNS</h3><form id="ddns-form" class="native-form"><label>DuckDNS subdomain or full hostname<input id="ddns-domain" type="text" placeholder="my-workspace or my-workspace.duckdns.org"></label><label>DuckDNS token<input id="ddns-token" type="password" autocomplete="new-password" placeholder="Leave blank to keep the saved token"></label><small id="ddns-token-status" class="muted">Token not configured</small><button class="btn primary" type="submit">Save DDNS settings</button></form></article>
+          <article class="glass detail-panel"><h3>Router forwarding</h3><p>Only forward the configured HTTPS reverse-proxy port after TLS is running. Never forward port 8000, Docker, SSH or router administration. Mapping leases are temporary and auditable.</p><form id="router-mapping-form" class="native-form"><label>Mapping protocol<select id="router-mapping-method"><option value="upnp-igd">UPnP IGD</option><option value="nat-pmp">NAT-PMP</option><option value="pcp">PCP</option></select></label><label>External HTTPS port<input id="router-external-port" type="number" min="1" max="65535" value="443"></label><label>Type CREATE to confirm<input id="router-mapping-confirm" type="text" autocomplete="off" placeholder="CREATE"></label><label><input id="router-mapping-approve" type="checkbox"> I explicitly approve a temporary HTTPS port mapping on my router.</label><button class="btn primary" id="btn-create-router-mapping" type="submit">Create approved mapping</button></form><p id="router-mapping-status" class="muted">No router mapping is recorded.</p><button class="btn danger" id="btn-remove-router-mapping" type="button" disabled>Remove recorded mapping</button></article>
+          <article class="glass detail-panel"><div class="panel-head"><h3>External reachability test</h3><button class="btn primary" id="btn-create-external-test" type="button">Generate one-time test link</button></div><p>Generate a one-use HTTPS challenge, then open it from a phone with Wi-Fi switched off and mobile data enabled. Generating a link does not expose any port or create a router mapping.</p><div id="external-verification-result" class="token-result" hidden></div><p id="external-reachability-status" class="muted">External reachability has not been verified.</p></article>
+          <article class="glass detail-panel"><h3>Secure relay status</h3><p id="relay-status">Relay status is not available yet.</p></article>
+        </section>
+
+        <section class="page" id="page-sandbox"><div class="page-intro glass"><span class="eyebrow cyan">ISOLATED EXECUTION</span><h2>Sandbox &amp; CLI</h2><p>Run approved commands in a Docker workbench rather than on the host operating system. The sandbox is the execution boundary for AI-generated code.</p><div class="page-actions"><button class="btn primary" data-open-page="sandbox">Open workbench ↗</button></div></div><div class="permission-grid"><article class="glass permission-card"><span class="permission-symbol cyan">⌘</span><h3>Command execution</h3><p>Share-scoped jobs with bounded command permissions.</p><b>Docker workbench</b></article><article class="glass permission-card"><span class="permission-symbol purple">⇄</span><h3>File exchange</h3><p>Controlled read/write access to the selected share.</p><b>Share scoped</b></article><article class="glass permission-card"><span class="permission-symbol green">◈</span><h3>Isolation</h3><p>Host shell and arbitrary desktop access are not exposed by the CLI endpoint.</p><b>Container boundary</b></article></div></section>
+
+        <section class="page" id="page-ide"><div class="page-intro glass"><span class="eyebrow cyan">DEVELOPER WORKFLOW</span><h2>IDE integrations</h2><p>Connect a supported editor to a scoped SF2AiS workspace. The integration uses the workspace API and does not grant host shell, task runner or debugger access.</p><div class="page-actions"><button class="btn primary" id="btn-ide-guide">Open VS Code setup guide</button><button class="btn ghost" data-open-page="ide">Open IDE workspace ↗</button></div></div><article class="glass detail-panel"><h3>VS Code integration</h3><p>Use a client token stored in VS Code SecretStorage. The extension reads and writes only through the authorized share endpoints.</p><ul class="feature-list"><li>Scoped workspace file tree</li><li>Read and write permission enforcement</li><li>Token stored in editor secret storage</li><li>No local terminal or process execution capability</li></ul></article></section>
+
+        <section class="page" id="page-computer-use"><div class="page-intro glass"><span class="eyebrow cyan">COMPUTER USE PROVIDER</span><h2>Computer use</h2><p>CUA integration is installed as an optional provider. It must remain stopped until an administrator explicitly approves a session and its individual capabilities.</p></div><div class="overview-grid"><article class="glass detail-panel"><span class="eyebrow">PROVIDER STATUS</span><h3 id="cua-provider-status">Installed · stopped</h3><p>No desktop-control session is started by opening this page. Observation and input control remain separate permissions.</p><span class="status-tag neutral">No active session</span></article><article class="glass detail-panel"><span class="eyebrow">SESSION SAFETY</span><h3>Explicit approval required</h3><p>Sessions must be bound to a share, client and approved scope. Clipboard, shell and arbitrary script execution remain outside the default computer-use permission.</p><button class="btn ghost" data-open-page="computer-use">Open server controls ↗</button></article></div></section>
+
+        <section class="page" id="page-monitor">
+          <div class="page-intro glass"><span class="eyebrow cyan">LIVE AI CONNECTIONS</span><h2>AI Realtime Monitor</h2><p>Monitor authenticated AI client sessions, their granted capabilities, last activity and recent workspace events. This page observes session metadata only; it does not start computer-use sessions or grant permissions.</p><div class="page-actions"><button class="btn primary" id="btn-monitor-refresh" type="button">Refresh now</button><label class="monitor-auto-toggle"><input id="monitor-auto-refresh" type="checkbox" checked> Auto-refresh every 5 seconds</label><span class="status-tag neutral" id="monitor-updated-at">Not yet refreshed</span></div></div>
+          <div class="metric-grid compact-grid monitor-summary"><article class="metric glass"><span>Registered sessions</span><strong id="monitor-session-count">—</strong><small>Known AI client sessions</small></article><article class="metric glass"><span>Active sessions</span><strong id="monitor-active-count">—</strong><small>Currently active or connected</small></article><article class="metric glass"><span>Recent events</span><strong id="monitor-event-count">—</strong><small>Latest 100 recorded events</small></article></div>
+          <article class="glass detail-panel"><div class="panel-head"><h3>Connected AI clients</h3><span class="status-tag neutral" id="monitor-connection-state">Waiting for server</span></div><div id="monitor-session-list" class="monitor-list" aria-live="polite"><p class="muted">Loading AI sessions…</p></div></article>
+          <article class="glass detail-panel"><div class="panel-head"><h3>Live activity stream</h3><label class="monitor-filter">Session filter<select id="monitor-session-filter"><option value="">All sessions</option></select></label></div><div id="monitor-event-list" class="monitor-events" aria-live="polite"><p class="muted">Waiting for activity events…</p></div></article>
+        </section>
+
+        <section class="page" id="page-downloads">
+          <div class="page-intro glass"><span class="eyebrow cyan">APPLICATION DISTRIBUTION</span><h2>Desktop installers</h2><p>Download the available SF2AiS desktop package for the device you are installing. Downloads are served by this authenticated SF2AiS server; an installer is only offered when that exact build and architecture exists.</p></div>
+          <article class="glass detail-panel"><h3>Windows</h3><p>Standard Windows x64 or ARM64 devices.</p><div class="page-actions"><button class="btn primary" data-installer-platform="windows" data-installer-arch="x64">Download Windows x64 installer</button><button class="btn ghost" data-installer-platform="windows" data-installer-arch="arm64">Download Windows ARM64 installer</button></div></article>
+          <article class="glass detail-panel"><h3>macOS</h3><p>Apple Silicon and Intel macOS packages.</p><div class="page-actions"><button class="btn ghost" type="button" disabled>macOS ARM64 · build not published</button><button class="btn ghost" type="button" disabled>macOS x64 · build not published</button></div></article>
+          <article class="glass detail-panel"><h3>Linux</h3><p>AppImage and Debian packages where available.</p><div class="page-actions"><button class="btn ghost" type="button" disabled>Linux x64 · build not published</button><button class="btn ghost" type="button" disabled>Linux ARM64 · build not published</button></div></article>
+          <p class="muted" id="installer-download-status">Installer availability is checked by the server when you request a download. Missing builds are reported without substituting another architecture.</p>
+        </section>
+        <section class="page" id="page-activity"><div class="page-intro glass"><span class="eyebrow cyan">AUDIT &amp; DIAGNOSTICS</span><h2>Activity &amp; logs</h2><p>Recent local probe events and reporting results.</p><div class="page-actions"><button class="btn ghost" id="btn-refresh-logs">Refresh local activity</button><button class="btn ghost" id="btn-refresh-server-audit">Refresh server audit</button><button class="btn danger" id="btn-clear-logs">Clear local probe log</button></div></div><article class="glass detail-panel"><div class="panel-head"><h3>Local event stream</h3><span class="status-tag neutral">Last 200 entries</span></div><pre class="log-box" id="log-box">Loading local activity…</pre></article></section>
+
+        <section class="page" id="page-settings">
+          <div class="page-intro glass"><span class="eyebrow cyan">LOCAL AGENT CONFIGURATION</span><h2>System settings</h2><p>Configure the local desktop probe, gateway connection, dynamic DNS and Windows startup behaviour.</p></div>
+          <article class="glass detail-panel appearance-panel" id="appearance-settings">
+            <div class="panel-head"><div><span class="eyebrow cyan">PERSONALISE YOUR WORKSPACE</span><h3>Appearance &amp; glass effects</h3></div><span class="status-tag">Live preview</span></div>
+            <p>Adjust how much of your desktop shows through the window and glass panels. Changes preview immediately and save automatically.</p>
+            <div class="appearance-grid">
+              <div class="appearance-control"><label for="background-opacity">Window background opacity <output id="background-opacity-value">0%</output></label><input id="background-opacity" type="range" min="0" max="100" step="1" value="0"><small>0% is fully transparent; increase it for a more solid window background.</small></div>
+              <div class="appearance-control"><label for="card-opacity">Card opacity <output id="card-opacity-value">78%</output></label><input id="card-opacity" type="range" min="25" max="100" step="1" value="78"><small>Controls how solid the frosted-glass cards appear.</small></div>
+            </div>
+            <div class="appearance-colours">
+              <div class="colour-setting"><label for="card-frost-start">Card frost · primary tint</label><input id="card-frost-start" type="color" value="#191f43"></div>
+              <div class="colour-setting"><label for="card-frost-end">Card frost · secondary tint</label><input id="card-frost-end" type="color" value="#26376b"></div>
+              <div class="colour-setting"><label for="window-border-start">Window border · purple</label><input id="window-border-start" type="color" value="#a07eff"></div>
+              <div class="colour-setting"><label for="window-border-end">Window glow · blue</label><input id="window-border-end" type="color" value="#398fff"></div>
+              <div class="colour-setting"><label for="card-border-start">Card border · purple</label><input id="card-border-start" type="color" value="#a897ff"></div>
+              <div class="colour-setting"><label for="card-border-end">Card glow · blue</label><input id="card-border-end" type="color" value="#398fff"></div>
+            </div>
+            <div class="page-actions"><button class="btn ghost" id="btn-reset-appearance" type="button">Reset appearance</button></div>
+          </article>
+          <article class="glass detail-panel" id="server-connection-panel"><div class="panel-head"><div><span class="eyebrow cyan">SERVER CONTROL PLANE</span><h3>SF2AiS server connection</h3></div><span class="status-tag neutral" id="server-connection-status">Not connected</span></div>
+            <p>Connect this desktop client to your SF2AiS server. The administrator password is encrypted using Windows secure credential storage and is never exposed to the renderer.</p>
+            <form id="server-connection-form" class="native-form"><label>Server URL<input id="server-url" type="url" required placeholder="https://your-server.example or http://127.0.0.1:8000"></label><label>Administrator username<input id="server-admin-username" required autocomplete="username"></label><label>Administrator password<input id="server-admin-password" type="password" required autocomplete="current-password"></label><div class="page-actions"><button class="btn primary" type="submit">Connect and verify</button><button class="btn ghost" id="btn-disconnect-server" type="button">Disconnect</button></div></form><p class="muted" id="server-connection-detail">Remote connections require HTTPS. HTTP is permitted only for localhost.</p></article><article class="glass detail-panel"><div class="settings-grid"><div><label for="gateway-url">Gateway URL</label><input type="url" id="gateway-url" placeholder="http://127.0.0.1:8000"></div><div><label for="probe-token">Probe token</label><input type="password" id="probe-token" placeholder="Probe token"></div><div><label for="duckdns-subdomain">DuckDNS subdomain</label><input type="text" id="duckdns-subdomain" placeholder="your-subdomain"></div><div><label for="duckdns-token">DuckDNS token</label><input type="password" id="duckdns-token" placeholder="DuckDNS token"></div><div><label for="interval">Check interval (minutes)</label><input type="number" id="interval" min="1" max="1440" value="5"></div><div class="toggle-setting"><label for="start-with-windows">Start with Windows</label><input type="checkbox" id="start-with-windows"></div></div><div class="page-actions"><button class="btn primary" id="btn-save">Save settings</button><button class="btn ghost" id="btn-open-duckdns">Open DuckDNS ↗</button><button class="btn ghost" id="btn-scheduler">Create Windows task</button></div></article><article class="glass detail-panel"><h3>Probe service</h3><p>Start or stop the local IP reporting service independently of the workspace server.</p><div class="page-actions"><button class="btn primary" id="btn-start-probe">Start probe</button><button class="btn danger" id="btn-stop-probe">Stop probe</button></div></article></section>
       </div>
-
-      <div class="card-sm">
-        <div class="label">Current public IP</div>
-        <div class="copy-row">
-          <code id="current-ip">Waiting…</code>
-          <button type="button" class="small secondary" id="btn-copy-ip" title="Copy IP">Copy</button>
-        </div>
-        <div class="meta" id="last-check">Last check: never</div>
-      </div>
-
-      <h2 style="margin-top:22px; margin-bottom:6px;">Settings</h2>
-      <p class="sub" style="margin-top:0; margin-bottom:14px;">Set your gateway and probe token from the Sf2AiS dashboard.</p>
-
-      <label>Gateway URL</label>
-      <input type="url" id="gateway-url" placeholder="http://192.168.1.5:8000">
-
-      <label>Probe Token</label>
-      <input type="password" id="probe-token" placeholder="paste your probe token">
-
-      <h2 style="margin-top:22px; margin-bottom:6px;">DuckDNS</h2>
-      <p class="sub" style="margin-top:0; margin-bottom:14px;">Keep your public IP updated with DuckDNS so your link stays alive even if your ISP reassigns your IP.</p>
-
-      <label>DuckDNS Subdomain</label>
-      <input type="text" id="duckdns-subdomain" placeholder="e.g. wayne-debug">
-
-      <label>DuckDNS Token</label>
-      <input type="password" id="duckdns-token" placeholder="duckdns.org token">
-
-      <div class="actions" style="margin-top:8px;">
-        <button type="button" class="btn secondary small" id="btn-open-duckdns">
-          🌐 Open duckdns.org
-        </button>
-      </div>
-
-      <div class="grid-2">
-        <div>
-          <label>Check interval (min)</label>
-          <input type="number" id="interval" min="1" max="1440" value="5">
-        </div>
-        <div>
-          <label>Start with Windows</label>
-          <label class="toggle" style="margin-top:10px;">
-            <input type="checkbox" id="start-with-windows">
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          </label>
-        </div>
-      </div>
-
-      <div class="actions">
-        <button type="button" class="btn" id="btn-save">Save Settings</button>
-        <button type="button" class="btn secondary" id="btn-check-now">Check Now</button>
-      </div>
-
-      <div class="actions" style="margin-top:10px;">
-        <button type="button" class="btn secondary" id="btn-dashboard">
-          🌐 Open Web Dashboard
-        </button>
-        <button type="button" class="btn secondary" id="btn-scheduler">
-          ⏰ Create Windows Task
-        </button>
-      </div>
-
-      <h2 style="margin-top:26px; margin-bottom:6px;">Live Log</h2>
-      <div class="log-box" id="log-box">
-        <div class="log-placeholder">Logs will appear here once the probe starts running.</div>
-      </div>
-      <div class="log-actions">
-        <button type="button" class="small secondary" id="btn-refresh-logs">Refresh</button>
-        <button type="button" class="small danger" id="btn-clear-logs">Clear</button>
-      </div>
-    </div>
-
-    <div class="footer">
-      Sf2AiS &bull; self-hosted file bridge for AI assistants
-    </div>
+      <footer class="app-footer"><span>SF2AiS <i>·</i> A CreoDevo secure workspace component</span><span>Local-first <i>·</i> Permission-scoped <i>·</i> Auditable</span></footer>
+    </main>
   </div>
-
+  <div id="toast-region" aria-live="polite"></div>
   <script src="app.js"></script>
 </body>
 </html>

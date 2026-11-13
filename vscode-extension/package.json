@@ -1,0 +1,15 @@
+{
+  "name": "sf2ais-remote-workspace",
+  "displayName": "Sf2AiS Remote Workspace",
+  "description": "Open a permission-scoped Sf2AiS share as a VS Code workspace.",
+  "version": "0.1.0",
+  "publisher": "creodevo",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onCommand:sf2ais.configure", "onCommand:sf2ais.openWorkspace"],
+  "main": "./extension.js",
+  "contributes": { "commands": [
+    { "command": "sf2ais.configure", "title": "Sf2AiS: Configure Connection" },
+    { "command": "sf2ais.openWorkspace", "title": "Sf2AiS: Open Remote Workspace" }
+  ] }
+}
